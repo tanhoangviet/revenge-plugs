@@ -1,10 +1,10 @@
 {
-    "name": "FileContentPreview",
+    "name": "FileContentPreview Modded",
     "description": "Allows you to preview the contents of text files in the app.",
     "authors": [
         {
-            "name": "fres",
-            "id": "843448897737064448"
+            "name": "tanhoangviet",
+            "id": "1064016163392208906"
         }
     ],
     "main": "src/index.ts",
