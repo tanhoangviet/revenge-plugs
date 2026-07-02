@@ -4,6 +4,8 @@
 import { findByStoreName, findByName, findByProps } from '@vendetta/metro';
 import { after } from '@vendetta/patcher';
 import { isPreviewableFile } from '../filetypes';
+import { getEditorTheme } from '../settings';
+import { colorToDiscordInt } from '../themes';
 
 const ThemeStore = findByStoreName('ThemeStore');
 
@@ -26,6 +28,7 @@ function formatBytes(bytes?: number) {
 }
 
 function getCodedLinkColors() {
+  const theme = getEditorTheme();
   let colors = getEmbedThemeColors?.(ThemeStore.theme)?.colors || {
     acceptLabelGreenBackgroundColor: -14385083,
     headerColor: -6973533,
@@ -33,10 +36,10 @@ function getCodedLinkColors() {
     backgroundColor: -14276817,
   };
   return {
-    acceptLabelBackgroundColor: colors.acceptLabelGreenBackgroundColor,
-    headerColor: colors.headerColor,
-    borderColor: colors.borderColor,
-    backgroundColor: colors.backgroundColor,
+    acceptLabelBackgroundColor: colorToDiscordInt(theme.chatButton, 0.96) ?? colors.acceptLabelGreenBackgroundColor,
+    headerColor: colorToDiscordInt(theme.chatTitle, 1) ?? colors.headerColor,
+    borderColor: colorToDiscordInt(theme.chatBorder, 0.82) ?? colors.borderColor,
+    backgroundColor: colorToDiscordInt(theme.chatCard, 0.78) ?? colors.backgroundColor,
   };
 }
 

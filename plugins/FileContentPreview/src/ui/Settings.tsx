@@ -1,12 +1,11 @@
 import { React, ReactNative, constants } from '@vendetta/metro/common';
-import { storage } from '@vendetta/plugin';
-import { useProxy } from '@vendetta/storage';
 import { General } from '@vendetta/ui/components';
-import { DEFAULT_CHUNK_SIZE, ensureSettings, resetSettings } from '../settings';
+import { DEFAULT_CHUNK_SIZE, ensureSettings, getStorage, resetSettings } from '../settings';
+import { EDITOR_THEMES, THEME_KEYS } from '../themes';
 import { BubbleField, GlassPanel, getGlassColors } from './glass';
 
-const { ScrollView, StyleSheet } = ReactNative;
-const { View, Text, TouchableOpacity } = General;
+const { ScrollView, StyleSheet, TouchableOpacity } = ReactNative;
+const { View, Text } = General;
 
 const chunkPresets = [
   { label: '32 KB', value: 32 * 1024 },
@@ -24,15 +23,15 @@ const settingsCopy = {
   showLineNumbers: ['Line numbers', 'Show the compact line rail in previews.'],
 };
 
-const ToggleRow: any = ({ settingKey, colors }) => {
+const ToggleRow: any = ({ settingKey, colors, store, onChange }) => {
   const [title, body] = settingsCopy[settingKey];
-  const enabled = storage[settingKey] !== false;
+  const enabled = store[settingKey] !== false;
 
   return (
     <TouchableOpacity
       activeOpacity={0.82}
       onPress={() => {
-        storage[settingKey] = !enabled;
+        onChange(settingKey, !enabled);
       }}
       style={styles.row}>
       <View style={{ flex: 1, paddingRight: 14 }}>
@@ -61,8 +60,48 @@ const ToggleRow: any = ({ settingKey, colors }) => {
   );
 };
 
-const ChunkSelector: any = ({ colors }) => {
-  const current = Number(storage.chunkSize) || DEFAULT_CHUNK_SIZE;
+const ThemeSelector: any = ({ colors, store, onChange }) => {
+  const current = store.editorTheme;
+
+  return (
+    <View style={styles.themeWrap}>
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>Editor theme</Text>
+      <Text style={[styles.sectionBody, { color: colors.muted }]}>VS Code-style palettes for Configure, chat previews, and file reading.</Text>
+      <View style={styles.themeList}>
+        {THEME_KEYS.map((themeKey) => {
+          const theme = EDITOR_THEMES[themeKey];
+          const active = current === themeKey;
+          return (
+            <TouchableOpacity
+              key={themeKey}
+              activeOpacity={0.84}
+              onPress={() => onChange('editorTheme', themeKey)}
+              style={[
+                styles.themeOption,
+                {
+                  backgroundColor: active ? colors.accentSoft : colors.core,
+                  borderColor: active ? colors.accent : colors.border,
+                },
+              ]}>
+              <View style={styles.swatches}>
+                {theme.swatches.map((swatch) => (
+                  <View key={swatch} style={[styles.swatch, { backgroundColor: swatch }]} />
+                ))}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.themeTitle, { color: colors.text }]}>{theme.label}</Text>
+                <Text style={[styles.themeBody, { color: colors.muted }]}>{theme.description}</Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+};
+
+const ChunkSelector: any = ({ colors, store, onChange }) => {
+  const current = Number(store.chunkSize) || DEFAULT_CHUNK_SIZE;
 
   return (
     <View style={styles.chunkWrap}>
@@ -76,7 +115,7 @@ const ChunkSelector: any = ({ colors }) => {
               key={preset.label}
               activeOpacity={0.84}
               onPress={() => {
-                storage.chunkSize = preset.value;
+                onChange('chunkSize', preset.value);
               }}
               style={[
                 styles.preset,
@@ -96,10 +135,19 @@ const ChunkSelector: any = ({ colors }) => {
 
 export const Settings: any = () => {
   ensureSettings();
-  useProxy(storage);
+  const [, rerender] = React.useReducer((value) => value + 1, 0);
+  const store = getStorage();
 
   const colors = getGlassColors();
-  const bubblesEnabled = storage.bubbleEffects !== false && storage.liquidGlass !== false;
+  const bubblesEnabled = store.bubbleEffects !== false && store.liquidGlass !== false;
+  const updateSetting = (key: string, value: any) => {
+    store[key] = value;
+    rerender();
+  };
+  const reset = () => {
+    resetSettings();
+    rerender();
+  };
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.screen }} contentContainerStyle={styles.container}>
@@ -107,28 +155,32 @@ export const Settings: any = () => {
       <GlassPanel colors={colors} style={styles.headerShell} innerStyle={styles.headerCore}>
         <Text style={[styles.kicker, { color: colors.accent }]}>Configure</Text>
         <Text style={[styles.title, { color: colors.text }]}>FileContentPreview</Text>
-        <Text style={[styles.subtitle, { color: colors.muted }]}>Liquid glass controls for previews, loading size, and default reader behavior.</Text>
-      </GlassPanel>
-
-      <GlassPanel colors={colors} style={styles.panel}>
-        <ToggleRow colors={colors} settingKey="liquidGlass" />
-        <ToggleRow colors={colors} settingKey="transparentPreview" />
-        <ToggleRow colors={colors} settingKey="bubbleEffects" />
-      </GlassPanel>
-
-      <GlassPanel colors={colors} style={styles.panel}>
-        <ToggleRow colors={colors} settingKey="defaultWordWrap" />
-        <ToggleRow colors={colors} settingKey="defaultMonospace" />
-        <ToggleRow colors={colors} settingKey="showLineNumbers" />
+        <Text style={[styles.subtitle, { color: colors.muted }]}>VS Code-style preview themes with readable transparent surfaces.</Text>
       </GlassPanel>
 
       <GlassPanel colors={colors} style={styles.panel} innerStyle={{ padding: 16 }}>
-        <ChunkSelector colors={colors} />
+        <ThemeSelector colors={colors} store={store} onChange={updateSetting} />
+      </GlassPanel>
+
+      <GlassPanel colors={colors} style={styles.panel}>
+        <ToggleRow colors={colors} store={store} onChange={updateSetting} settingKey="liquidGlass" />
+        <ToggleRow colors={colors} store={store} onChange={updateSetting} settingKey="transparentPreview" />
+        <ToggleRow colors={colors} store={store} onChange={updateSetting} settingKey="bubbleEffects" />
+      </GlassPanel>
+
+      <GlassPanel colors={colors} style={styles.panel}>
+        <ToggleRow colors={colors} store={store} onChange={updateSetting} settingKey="defaultWordWrap" />
+        <ToggleRow colors={colors} store={store} onChange={updateSetting} settingKey="defaultMonospace" />
+        <ToggleRow colors={colors} store={store} onChange={updateSetting} settingKey="showLineNumbers" />
+      </GlassPanel>
+
+      <GlassPanel colors={colors} style={styles.panel} innerStyle={{ padding: 16 }}>
+        <ChunkSelector colors={colors} store={store} onChange={updateSetting} />
       </GlassPanel>
 
       <TouchableOpacity
         activeOpacity={0.84}
-        onPress={resetSettings}
+        onPress={reset}
         style={[
           styles.reset,
           {
@@ -205,6 +257,42 @@ const styles = StyleSheet.create({
   },
   chunkWrap: {
     gap: 8,
+  },
+  themeWrap: {
+    gap: 10,
+  },
+  themeList: {
+    gap: 9,
+    marginTop: 4,
+  },
+  themeOption: {
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  swatches: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  swatch: {
+    width: 21,
+    height: 21,
+  },
+  themeTitle: {
+    fontSize: 14,
+    fontFamily: constants.Fonts.PRIMARY_BOLD,
+  },
+  themeBody: {
+    marginTop: 3,
+    fontSize: 12,
+    lineHeight: 16,
   },
   sectionTitle: {
     fontSize: 17,

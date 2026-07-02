@@ -1,46 +1,35 @@
 import { React, ReactNative } from '@vendetta/metro/common';
-import { find, findByProps, findByStoreName } from '@vendetta/metro';
-import { semanticColors } from '@vendetta/ui';
-import { getBooleanSetting } from '../settings';
-
-const ThemeStore = findByStoreName('ThemeStore');
-const resolveSemanticColor =
-  find((m) => m.default?.internal?.resolveSemanticColor)?.default.internal.resolveSemanticColor ??
-  find((m) => m.meta?.resolveSemanticColor)?.meta.resolveSemanticColor ??
-  (() => {});
+import { getBooleanSetting, getEditorTheme } from '../settings';
 
 const { View, Animated, Easing, StyleSheet } = ReactNative;
 
-const color = (semantic, fallback) => resolveSemanticColor(ThemeStore.theme, semantic) ?? fallback;
-
-const themeName = () => String(ThemeStore.theme ?? '').toLowerCase();
-
-const isDarkTheme = () => {
-  const name = themeName();
-  return name.includes('dark') || name.includes('amoled') || name.includes('midnight');
-};
-
 export function getGlassColors() {
-  const isDark = isDarkTheme();
+  const theme = getEditorTheme();
   const liquidGlass = getBooleanSetting('liquidGlass');
   const transparent = liquidGlass && getBooleanSetting('transparentPreview');
 
   return {
-    isDark,
-    text: color(semanticColors.MOBILE_TEXT_HEADING_PRIMARY, isDark ? '#f8fafc' : '#101828'),
-    muted: color(semanticColors.TEXT_MUTED, isDark ? '#b7c0d8' : '#667085'),
-    screen: transparent ? (isDark ? 'rgba(7, 10, 20, 0.70)' : 'rgba(239, 246, 255, 0.58)') : color(semanticColors.BACKGROUND_BASE_LOWEST, isDark ? '#11131f' : '#f2f5fb'),
-    shell: transparent ? (isDark ? 'rgba(255, 255, 255, 0.075)' : 'rgba(255, 255, 255, 0.62)') : color(semanticColors.BACKGROUND_BASE_LOWER, isDark ? '#171a27' : '#ffffff'),
-    core: transparent ? (isDark ? 'rgba(255, 255, 255, 0.105)' : 'rgba(255, 255, 255, 0.72)') : color(semanticColors.BACKGROUND_BASE_LOW, isDark ? '#1f2230' : '#ffffff'),
-    coreStrong: transparent ? (isDark ? 'rgba(255, 255, 255, 0.155)' : 'rgba(255, 255, 255, 0.86)') : color(semanticColors.BACKGROUND_BASE_HIGHER, isDark ? '#262a3a' : '#f6f8fc'),
-    hairline: liquidGlass ? (isDark ? 'rgba(255, 255, 255, 0.18)' : 'rgba(255, 255, 255, 0.74)') : color(semanticColors.BACKGROUND_BASE_HIGHER, isDark ? '#303447' : '#d9e0ef'),
-    border: liquidGlass ? (isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(116, 139, 184, 0.22)') : color(semanticColors.BACKGROUND_BASE_HIGHER, isDark ? '#303447' : '#d9e0ef'),
-    accent: isDark ? 'rgba(153, 211, 255, 0.88)' : 'rgba(31, 111, 235, 0.86)',
-    accentSoft: isDark ? 'rgba(153, 211, 255, 0.18)' : 'rgba(31, 111, 235, 0.14)',
-    bubbleA: isDark ? 'rgba(98, 185, 255, 0.22)' : 'rgba(103, 167, 255, 0.28)',
-    bubbleB: isDark ? 'rgba(200, 154, 255, 0.18)' : 'rgba(177, 140, 255, 0.24)',
-    bubbleC: isDark ? 'rgba(100, 255, 216, 0.14)' : 'rgba(90, 222, 202, 0.18)',
-    shadow: isDark ? '#000' : '#667399',
+    isDark: theme.isDark,
+    text: theme.text,
+    muted: theme.muted,
+    screen: transparent ? theme.screen : theme.screenSolid,
+    shell: transparent ? theme.shell : theme.coreStrong,
+    core: transparent ? theme.core : theme.coreStrong,
+    coreStrong: theme.coreStrong,
+    hairline: liquidGlass ? theme.hairline : theme.border,
+    border: theme.border,
+    accent: theme.accent,
+    accentSoft: theme.accentSoft,
+    editor: transparent ? theme.editor : theme.editorSolid,
+    editorSolid: theme.editorSolid,
+    editorText: theme.editorText,
+    editorMuted: theme.editorMuted,
+    lineRail: theme.lineRail,
+    bubbleA: theme.bubbleA,
+    bubbleB: theme.bubbleB,
+    bubbleC: theme.bubbleC,
+    shadow: theme.shadow,
+    themeLabel: theme.label,
   };
 }
 

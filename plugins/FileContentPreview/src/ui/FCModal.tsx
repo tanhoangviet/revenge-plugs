@@ -297,14 +297,14 @@ export const FCModal: any = ({
           />
         </FCButtonBar>
         <ScrollView ref={scrollViewRef} style={{ margin: 15, marginBottom: 50 + insets.bottom }}>
-          <GlassPanel colors={colors} innerStyle={{ padding: 10 }}>
+          <GlassPanel colors={colors} innerStyle={{ padding: 10, backgroundColor: colors.editor }}>
             <ScrollView horizontal={!wordWrap}>
               <View style={{ flexDirection: 'row' }}>
                 {showLineNumbers && (
                   <View
                     style={{
                       borderRadius: 18,
-                      backgroundColor: colors.shell,
+                      backgroundColor: colors.lineRail,
                       borderWidth: 1,
                       borderColor: colors.hairline,
                       marginRight: 8,
@@ -314,14 +314,14 @@ export const FCModal: any = ({
                       alignSelf: 'flex-start',
                       minWidth: 36,
                     }}>
-                    <Text style={{ textAlign: 'right', color: colors.muted, lineHeight: 20 }}>
+                    <Text style={{ textAlign: 'right', color: colors.editorMuted, lineHeight: 20 }}>
                       {nl.map((line) => (line ? ++lineIteration : ' ')).join('\n')}
                     </Text>
                   </View>
                 )}
                 <Text
                   selectable={true}
-                  style={[{ color: colors.text, lineHeight: 20, flex: 1 }, monospace && { fontFamily: constants.Fonts.CODE_NORMAL }]}
+                  style={[{ color: colors.editorText, lineHeight: 20, flex: 1 }, monospace && { fontFamily: constants.Fonts.CODE_NORMAL }]}
                   onTextLayout={(e) => {
                     if (!showLineNumbers) return;
                     let lines = e.nativeEvent.lines;
