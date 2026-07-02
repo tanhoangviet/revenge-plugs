@@ -1,5 +1,5 @@
 import { findByStoreName, findByProps } from '@vendetta/metro';
-import filetypes from '../filetypes';
+import { isPreviewableFile } from '../filetypes';
 import MessageHandlers from '../utils/MessageHandlersPatcher';
 import { FCModal } from '../ui/FCModal';
 
@@ -12,21 +12,24 @@ export default function patch() {
     const { index, messageId } = nativeEvent;
     let channel = SelectedChannelStore.getChannelId();
     let message = MessageStore.getMessage(channel, messageId);
-  
+    if (!message) return;
+
     /** Starter thread messages */
     if (message.messageReference && message.messageReference.type == 0 && message.messageReference.channel_id != channel) {
       message = MessageStore.getMessage(message.messageReference.channel_id, message.messageReference.message_id);
+      if (!message) return;
     }
     /** Forwards */
     if (message.messageSnapshots?.[0]?.message) {
       message = message.messageSnapshots[0].message;
     }
-    
-    let codedLinks = message.codedLinks;
-    let textFiles = message.attachments.filter((attachment) => filetypes.has(attachment.filename.toLowerCase().split('.').pop()));
+
+    let codedLinks = message.codedLinks ?? [];
+    let textFiles = (message.attachments ?? []).filter((attachment) => isPreviewableFile(attachment.filename));
     if (index >= codedLinks.length) {
       const attachmentIndex = index - codedLinks.length;
       const attachment = textFiles[attachmentIndex];
+      if (!attachment) return;
       const { filename, url, size } = attachment;
       modals.pushModal({
         key: 'file-content-preview',

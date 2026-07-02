@@ -111,7 +111,7 @@ function patchHandlers(handlers: any) {
   if (handlers[isPatchedSymbol]) return;
   handlers[isPatchedSymbol] = true;
   _handlers = handlers;
-  for (let [a, val] of pendingPatches) {
+  for (let [a, val] of [...pendingPatches]) {
     patches.set(a, before(val[0], _handlers, val[1]));
     pendingPatches.delete(a);
   }
@@ -132,7 +132,10 @@ function start() {
 
 /** Un-do everything done by start() */
 function end() {
-  if (!origGetParams) console.error("Can't unpatch MessageHandlers when it was never patched in the first place");
+  if (!origGetParams) {
+    console.error("Can't unpatch MessageHandlers when it was never patched in the first place");
+    return;
+  }
   Object.defineProperty(MessagesHandlers.prototype, 'params', {
     configurable: true,
     get: origGetParams,
@@ -163,6 +166,7 @@ export function unpatch(patch: symbol) {
   if (patch == UnpatchALL) {
     for (let undo of patches.values()) undo();
     patches.clear();
+    pendingPatches.clear();
   } else if (pendingPatches.has(patch)) {
     pendingPatches.delete(patch);
   } else if (patches.has(patch)) {
@@ -171,7 +175,7 @@ export function unpatch(patch: symbol) {
   } else {
     console.error(`MessageHandlersPatcher.unpatch should be used like: unpatch(patch) or unpatch(UnpatchALL). ${String(patch)} was given instead.`);
   }
-  if (!patches.size) end();
+  if (!patches.size && !pendingPatches.size) end();
 }
 
 export default { patch, unpatch, UnpatchALL };

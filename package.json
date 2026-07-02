@@ -2,26 +2,21 @@
 	"private": true,
 	"scripts": {
 		"build": "node build.mjs",
-		"ghpages": "node pages.mjs"
+		"check": "tsc --noEmit",
+		"ghpages": "node pages.mjs",
+		"verify": "pnpm check && pnpm build && pnpm ghpages"
 	},
 	"dependencies": {
-		"@swc/helpers": "^0.5.17"
+		"@swc/helpers": "^0.5.23"
 	},
 	"devDependencies": {
-		"@rollup/plugin-commonjs": "^28.0.6",
-		"@rollup/plugin-node-resolve": "^16.0.1",
-		"@swc/core": "^1.12.11",
-		"esbuild": "^0.25.6",
-		"rollup": "^4.45.0",
+		"@rollup/plugin-commonjs": "^29.0.3",
+		"@rollup/plugin-node-resolve": "^16.0.3",
+		"@swc/core": "^1.15.43",
+		"esbuild": "^0.28.1",
+		"rollup": "^4.62.2",
 		"rollup-plugin-esbuild": "^6.2.1",
+		"typescript": "^6.0.3",
 		"vendetta-types": "^2.4.21"
-	},
-	"pnpm": {
-		"peerDependencyRules": {
-			"ignoreMissing": [
-				"react",
-				"react-native"
-			]
-		}
 	}
 }

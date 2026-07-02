@@ -64,12 +64,29 @@ export const Messages = {
   LOAD_MORE: {
     'en-US': 'Load more',
   },
+  LOADING: {
+    'en-US': 'Loading file',
+  },
+  LOAD_ERROR: {
+    'en-US': 'Could not load this file.',
+  },
+  RETRY: {
+    'en-US': 'Retry',
+  },
+  EMPTY_FILE: {
+    'en-US': 'This file is empty.',
+  },
+  NOT_LOADED: {
+    'en-US': 'remaining',
+  },
 };
 
 export default function getMessages(language: string) {
   return new Proxy(Messages, {
     get(target, prop) {
-      return target[prop][language] ?? target[prop]['en-US'] ?? Object.values(target[prop])[0];
+      const messages = target[prop];
+      if (!messages) return String(prop);
+      return messages[language] ?? messages['en-US'] ?? Object.values(messages)[0];
     },
   });
 }

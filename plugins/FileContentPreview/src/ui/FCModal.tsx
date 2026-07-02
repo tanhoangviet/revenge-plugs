@@ -1,5 +1,5 @@
 import { React, ReactNative, constants } from '@vendetta/metro/common';
-import { storage } from "@vendetta/plugin";
+import { storage } from '@vendetta/plugin';
 import { find, findByProps, findByName, findByStoreName } from '@vendetta/metro';
 import { General } from '@vendetta/ui/components';
 import { getAssetIDByName } from '@vendetta/ui/assets';
@@ -22,18 +22,28 @@ const resolveSemanticColor =
 const Navigator = findByName('Navigator') ?? findByProps('Navigator')?.Navigator;
 const closeButton = findByProps('getRenderCloseButton')?.getRenderCloseButton ?? findByProps('getHeaderCloseButton')?.getHeaderCloseButton;
 
-const { ActivityIndicator, ScrollView, Image, Modal }: { [key: string]: any } = ReactNative;
+const { ScrollView, Image, Modal }: { [key: string]: any } = ReactNative;
 
-const { View, Text } = General;
+const { View, Text, TouchableOpacity } = General;
 
 const SafeArea = findByProps('useSafeAreaInsets');
 const humanize = findByProps('intword');
+const DEFAULT_CHUNK_SIZE = 60 * 1024;
 
-/** Format file size
- * @param bytes
- * @returns Human readable string
- */
-const filesize = (bytes: number): string => humanize.intword(bytes, ['bytes', 'KB', 'MB', 'GB', 'TB', 'PB'], 1024, undefined, undefined, undefined, ' ');
+const fallbackFilesize = (bytes: number): string => {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 bytes';
+  const units = ['bytes', 'KB', 'MB', 'GB', 'TB', 'PB'];
+  let value = bytes;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex++;
+  }
+  return `${unitIndex === 0 || value >= 10 ? value.toFixed(0) : value.toFixed(1)} ${units[unitIndex]}`;
+};
+
+const filesize = (bytes: number): string =>
+  humanize?.intword?.(bytes, ['bytes', 'KB', 'MB', 'GB', 'TB', 'PB'], 1024, undefined, undefined, undefined, ' ') ?? fallbackFilesize(bytes);
 
 const modals = findByProps('pushModal');
 
@@ -41,11 +51,32 @@ const MODALS = {
   JUMP: JumpModal,
 };
 
-const Loading: any = () => (
-  <View style={{ margin: 32 }}>
-    <ActivityIndicator size="large" />
+const Loading: any = ({ colors, text }) => (
+  <View style={{ margin: 15, gap: 10 }}>
+    <View style={{ height: 16, width: '72%', borderRadius: 4, backgroundColor: colors.bgBright }} />
+    <View style={{ height: 16, width: '92%', borderRadius: 4, backgroundColor: colors.bgDark }} />
+    <View style={{ height: 16, width: '48%', borderRadius: 4, backgroundColor: colors.bgDark }} />
+    <Text style={{ color: colors.sub, marginTop: 6 }}>{text}</Text>
   </View>
 );
+
+const StateMessage: any = ({ colors, title, actionText, onAction }) => (
+  <View style={{ margin: 15, padding: 14, borderRadius: 6, backgroundColor: colors.bgDark }}>
+    <Text style={{ color: colors.header, lineHeight: 20 }}>{title}</Text>
+    {onAction && (
+      <TouchableOpacity onPress={onAction} style={{ marginTop: 12, padding: 10, borderRadius: 5, backgroundColor: colors.bgBright }}>
+        <Text style={{ color: colors.header, textAlign: 'center', fontFamily: constants.Fonts.PRIMARY_BOLD }}>{actionText}</Text>
+      </TouchableOpacity>
+    )}
+  </View>
+);
+
+type LoadState = {
+  content: string;
+  loadedBytes: number;
+  status: 'loading' | 'ready' | 'empty' | 'error';
+  error: string;
+};
 
 export const FCModal: any = ({
   filename = 'unknown',
@@ -53,12 +84,13 @@ export const FCModal: any = ({
   bytes = 1,
 }) => {
   const [translations] = React.useState(() => getMessages(intl.currentLocale));
+  const color = (semantic, fallback) => resolveSemanticColor(ThemeStore.theme, semantic) ?? fallback;
   const colors = {
-    header: resolveSemanticColor(ThemeStore.theme, semanticColors.MOBILE_TEXT_HEADING_PRIMARY),
-    sub: resolveSemanticColor(ThemeStore.theme, semanticColors.TEXT_MUTED),
-    bgDark: resolveSemanticColor(ThemeStore.theme, semanticColors.BACKGROUND_BASE_LOWEST),
-    bgBright: resolveSemanticColor(ThemeStore.theme, semanticColors.BACKGROUND_BASE_LOWER),
-    bgBrighter: resolveSemanticColor(ThemeStore.theme, semanticColors.BACKGROUND_ACCENT),
+    header: color(semanticColors.MOBILE_TEXT_HEADING_PRIMARY, '#f4f4f5'),
+    sub: color(semanticColors.TEXT_MUTED, '#a1a1aa'),
+    bgDark: color(semanticColors.BACKGROUND_BASE_LOWEST, '#18181b'),
+    bgBright: color(semanticColors.BACKGROUND_BASE_LOWER, '#27272a'),
+    bgBrighter: color(semanticColors.BACKGROUND_ACCENT, '#3f3f46'),
   };
 
   const buttonColors = {
@@ -78,32 +110,80 @@ export const FCModal: any = ({
       key: keyof typeof MODALS;
       props: { [key: string]: any };
     } | null>(null);
-    const maxBytes = storage.chunkSize || 60928;
-    const [state, setState] = React.useState({ content: '', loadedBytes: maxBytes, firstTime: true });
+    const configuredChunkSize = Number(storage.chunkSize);
+    const maxBytes = Number.isFinite(configuredChunkSize) && configuredChunkSize > 0 ? Math.floor(configuredChunkSize) : DEFAULT_CHUNK_SIZE;
+    const totalBytes = Math.max(0, Number(bytes) || 0);
+    const [state, setState] = React.useState<LoadState>({ content: '', loadedBytes: 0, status: 'loading', error: '' });
+    const [isLoadingMore, setIsLoadingMore] = React.useState(false);
 
     const scrollViewRef = React.useRef(null);
+    const requestRef = React.useRef(0);
+    const pendingMoreRef = React.useRef(false);
 
     const [wordWrap, setWordWrap] = React.useState(false);
     const [monospace, setMonospace] = React.useState(true);
+    const [nl, setnl] = React.useState<boolean[]>([]);
 
-    const isLoading = state.content ? false : true;
+    const getRange = (startByte: number) => {
+      if (totalBytes <= 0) return null;
+      const endByte = Math.min(startByte + maxBytes - 1, totalBytes - 1);
+      return {
+        startByte,
+        endByte,
+        nextLoadedBytes: endByte + 1,
+      };
+    };
 
-    if (state.firstTime) {
+    const loadInitial = React.useCallback(() => {
+      const requestId = ++requestRef.current;
+      pendingMoreRef.current = false;
+      setIsLoadingMore(false);
+      setnl([]);
+
+      if (!url) {
+        setState({ content: '', loadedBytes: 0, status: 'error', error: translations.LOAD_ERROR });
+        return;
+      }
+
+      if (totalBytes === 0) {
+        setState({ content: '', loadedBytes: 0, status: 'empty', error: '' });
+        return;
+      }
+
+      const range = getRange(0);
+      if (!range) return;
+
+      setState({ content: '', loadedBytes: 0, status: 'loading', error: '' });
       fetch(url, {
         headers: {
-          Range: `bytes=0-${maxBytes}`,
+          Range: `bytes=${range.startByte}-${range.endByte}`,
         },
-      }).then((r) => {
-        if (!r.ok) {
-          // Network response was not ok
-          setState({ content: '', loadedBytes: 0, firstTime: false });
-        } else {
-          r.text().then((text) => {
-            setState({ content: text, loadedBytes: state.loadedBytes, firstTime: false });
+      })
+        .then(async (response) => {
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const text = await response.text();
+          if (requestRef.current !== requestId) return;
+          const loadedBytes = response.status === 206 ? range.nextLoadedBytes : totalBytes;
+          setState({
+            content: text,
+            loadedBytes,
+            status: text.length || totalBytes > 0 ? 'ready' : 'empty',
+            error: '',
           });
-        }
-      });
-    }
+        })
+        .catch((error) => {
+          if (requestRef.current !== requestId) return;
+          setState({ content: '', loadedBytes: 0, status: 'error', error: error?.message ?? translations.LOAD_ERROR });
+        });
+    }, [url, totalBytes, maxBytes, translations]);
+
+    React.useEffect(() => {
+      loadInitial();
+      return () => {
+        requestRef.current++;
+        pendingMoreRef.current = false;
+      };
+    }, [loadInitial]);
 
     const ModalComponent = visibleModal ? MODALS[visibleModal.key] : null;
 
@@ -119,34 +199,43 @@ export const FCModal: any = ({
       scrollView?.scrollToEnd?.({ animated: true });
     }
 
-    let pending = false;
     function onLoadMore() {
-      if (pending) return;
-      pending = true;
+      if (pendingMoreRef.current || state.loadedBytes >= totalBytes) return;
+      const range = getRange(state.loadedBytes);
+      if (!range) return;
+
+      pendingMoreRef.current = true;
+      setIsLoadingMore(true);
       fetch(url, {
         headers: {
-          Range: `bytes=${state.loadedBytes + 1}-${state.loadedBytes + maxBytes}`,
+          Range: `bytes=${range.startByte}-${range.endByte}`,
         },
-      }).then((r) => {
-        if (!r.ok) {
-          pending = false;
+      })
+        .then(async (response) => {
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const text = await response.text();
+          const loadedBytes = response.status === 206 ? range.nextLoadedBytes : totalBytes;
+          setState((current) => ({
+            content: current.content + text,
+            loadedBytes: Math.max(current.loadedBytes, loadedBytes),
+            status: 'ready',
+            error: '',
+          }));
+        })
+        .catch(() => {
           showToast('Error: Network response was not ok', getAssetIDByName('ic_close_circle'));
-        } else {
-          r.text().then((text) => {
-            setState({
-              content: state.content + text,
-              loadedBytes: state.loadedBytes + maxBytes,
-              firstTime: false,
-            });
-          });
-        }
-      });
+        })
+        .finally(() => {
+          pendingMoreRef.current = false;
+          setIsLoadingMore(false);
+        });
     }
 
     let lineIteration = 0;
-    const [nl, setnl] = React.useState([]);
 
-    if (isLoading) return <Loading />;
+    if (state.status === 'loading') return <Loading colors={colors} text={translations.LOADING} />;
+    if (state.status === 'error') return <StateMessage colors={colors} title={state.error || translations.LOAD_ERROR} actionText={translations.RETRY} onAction={loadInitial} />;
+    if (state.status === 'empty') return <StateMessage colors={colors} title={translations.EMPTY_FILE} />;
 
     return (
       <View style={{ marginTop: 0 }}>
@@ -185,7 +274,7 @@ export const FCModal: any = ({
             }
             active={false}
             colors={buttonColors}
-            info={'JUMP'}
+            info={translations.JUMP}
             content={
               <Image
                 source={getAssetIDByName('ic_arrow_right')}
@@ -218,23 +307,21 @@ export const FCModal: any = ({
                 style={[{ color: colors.header, lineHeight: 20, flex: 1 }, monospace && { fontFamily: constants.Fonts.CODE_NORMAL }]}
                 onTextLayout={(e) => {
                   let lines = e.nativeEvent.lines;
-                  // Code below: For each line, if it's the first line or the line before has a line break return true,
-                  // otherwise return false, this way I have an array of booleans which lets me know whether I should put
-                  // a line number at a certain index
-                  // TODO -- perhaps use a line height instead (like vscode i think) like {'12': 2} = line 12 indicator takes 2 lines
-                  setnl(lines.map((_line, i) => (i > 0 ? lines[i - 1].text.indexOf('\n') > -1 : true)));
+                  const nextLines = lines.map((_line, i) => (i > 0 ? lines[i - 1].text.indexOf('\n') > -1 : true));
+                  setnl((current) => (current.length === nextLines.length && current.every((line, i) => line === nextLines[i]) ? current : nextLines));
                 }}>
                 {state.content}
               </Text>
             </View>
           </ScrollView>
-          {state.loadedBytes < bytes && (
+          {state.loadedBytes < totalBytes && (
             <LoadMore
               buttonColor={colors.bgBright}
               buttonTextColor={colors.header}
               textColor={colors.sub}
-              remainingText={`+ ${filesize(bytes - state.loadedBytes)} not loaded.`}
-              moreText={translations.LOAD_MORE}
+              remainingText={`+ ${filesize(totalBytes - state.loadedBytes)} ${translations.NOT_LOADED}.`}
+              moreText={isLoadingMore ? translations.LOADING : translations.LOAD_MORE}
+              disabled={isLoadingMore}
               onPress={onLoadMore}
             />
           )}
@@ -245,7 +332,7 @@ export const FCModal: any = ({
               flex: 1,
               justifyContent: 'center',
               alignItems: 'center',
-              backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent background color
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
             }}>
             <View
               style={{

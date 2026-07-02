@@ -1,17 +1,22 @@
-import { readFile, writeFile, readdir, cp } from "fs/promises";
+import { readFile, writeFile, readdir, cp, mkdir } from "fs/promises";
 
 function owo(text, pluginId, manifest) {
-    return text.replaceAll("{pluginname}", manifest.name).replaceAll("{pluginid}", pluginId);
+    return text
+        .replaceAll("{pluginname}", manifest.name)
+        .replaceAll("{pluginid}", pluginId)
+        .replaceAll("{plugindescription}", manifest.description ?? "");
 }
 
+await mkdir('dist', { recursive: true });
 await cp('pages/common.css', 'dist/common.css');
 const indexTemplate = await readFile('pages/index.html', 'utf-8');
 const pluginTemplate = await readFile('pages/plugin.html', 'utf-8');
 
 const plugs = [];
-for (let plug of await readdir("./plugins")) {
+for (let plug of (await readdir("./plugins")).sort()) {
     const manifest = JSON.parse(await readFile(`./plugins/${plug}/manifest.json`));
     plugs.push({ manifest, id: plug });
+    await mkdir(`./dist/${plug}`, { recursive: true });
     await writeFile(`./dist/${plug}/index.html`, owo(pluginTemplate, plug, manifest));
 }
 

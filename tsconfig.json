@@ -3,10 +3,13 @@
         "outDir": "dist",
         "target": "ESNext",
         "module": "ESNext",
-        "moduleResolution": "node",
+        "moduleResolution": "bundler",
         "esModuleInterop": true,
         "jsx": "react-native",
         "allowJs": true,
+        "strict": false,
+        "noImplicitAny": false,
+        "skipLibCheck": true,
         "experimentalDecorators": true,
         "paths": {
             "@util/*": ["./util/*"]

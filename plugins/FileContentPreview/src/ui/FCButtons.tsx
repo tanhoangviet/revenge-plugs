@@ -83,19 +83,29 @@ export const FCButtonBar: any = ({ children }) => {
   );
 };
 
-const download = ReactNative.NativeModules.MediaManager.downloadMediaAsset;
+const download = ReactNative.NativeModules.MediaManager?.downloadMediaAsset;
 
 export const DownloadButton: any = ({ url, saveText, failText, copyText }) => {
   function onPress() {
-    download(url, 0).then((saved) => {
-      if (saved) {
-        showToast(saveText, getAssetIDByName('ic_selection_checked_24px'));
-      } else {
+    if (!download || !url) {
+      showToast(failText, getAssetIDByName('ic_close_circle'));
+      return;
+    }
+
+    download(url, 0)
+      .then((saved) => {
+        if (saved) {
+          showToast(saveText, getAssetIDByName('ic_selection_checked_24px'));
+        } else {
+          showToast(failText, getAssetIDByName('ic_close_circle'));
+        }
+      })
+      .catch(() => {
         showToast(failText, getAssetIDByName('ic_close_circle'));
-      }
-    });
+      });
   }
   function onLongPress() {
+    if (!url) return;
     clipboard.setString(url);
     showToast(copyText, getAssetIDByName('toast_copy_link'));
   }
