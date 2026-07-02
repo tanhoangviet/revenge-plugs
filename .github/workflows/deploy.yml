@@ -41,17 +41,79 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     permissions:
+      actions: read
+      contents: read
       pages: write
       id-token: write
 
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.publish.outputs.page_url }}
 
     steps:
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
 
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v5
+      - name: Create GitHub Pages deployment
+        id: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          artifact_id="$(
+            gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts" \
+              --jq '.artifacts[] | select(.name == "github-pages") | .id' \
+              | head -n 1
+          )"
+          if [ -z "$artifact_id" ]; then
+            echo "::error::Unable to find github-pages artifact for this run"
+            exit 1
+          fi
+
+          oidc_token="$(
+            curl -fsSL \
+              -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=api.github.com" \
+              | jq -r '.value'
+          )"
+          if [ -z "$oidc_token" ] || [ "$oidc_token" = "null" ]; then
+            echo "::error::Unable to request GitHub OIDC token"
+            exit 1
+          fi
+
+          version="${GITHUB_SHA}-${GITHUB_RUN_ID}"
+          jq -n \
+            --argjson artifact_id "$artifact_id" \
+            --arg pages_build_version "$version" \
+            --arg oidc_token "$oidc_token" \
+            '{artifact_id: $artifact_id, pages_build_version: $pages_build_version, oidc_token: $oidc_token}' \
+            | gh api -X POST "repos/${GITHUB_REPOSITORY}/pages/deployments" --input - >/tmp/pages-deployment.json
+
+          page_url="$(gh api "repos/${GITHUB_REPOSITORY}/pages" --jq '.html_url')"
+          echo "page_url=${page_url}" >> "$GITHUB_OUTPUT"
+          echo "Created Pages deployment $(jq -r '.id // .page_url // "unknown"' /tmp/pages-deployment.json)"
+
+      - name: Verify published site
+        env:
+          PAGE_URL: ${{ steps.publish.outputs.page_url }}
+        run: |
+          set -euo pipefail
+
+          marker_url="${PAGE_URL%/}/deployment.json?run=${GITHUB_RUN_ID}"
+          for attempt in $(seq 1 60); do
+            marker="$(curl -fsSL "$marker_url" || true)"
+            if printf '%s' "$marker" | jq -e \
+              --arg sha "$GITHUB_SHA" \
+              --arg run_id "$GITHUB_RUN_ID" \
+              '.sha == $sha and .runId == $run_id' >/dev/null 2>&1; then
+              echo "Published ${GITHUB_SHA} at ${PAGE_URL}"
+              exit 0
+            fi
+
+            echo "Waiting for published marker (${attempt}/60)..."
+            sleep 5
+          done
+
+          echo "::error::GitHub Pages did not publish this run's artifact within 5 minutes"
+          exit 1

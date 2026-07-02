@@ -30,3 +30,8 @@ const indexHtml = indexTemplate.replaceAll(/<(for-each-plugin)>([\s\S]*?)<\/\1>/
 
 await writeFile('dist/index.html', indexHtml);
 await writeFile('dist/404.html', indexHtml);
+await writeFile('dist/deployment.json', `${JSON.stringify({
+    sha: process.env.GITHUB_SHA ?? "",
+    runId: process.env.GITHUB_RUN_ID ?? "",
+    generatedAt: new Date().toISOString(),
+}, null, 2)}\n`);
