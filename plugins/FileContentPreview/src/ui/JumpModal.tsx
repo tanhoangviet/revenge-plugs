@@ -5,17 +5,24 @@ import { Forms, General } from '@vendetta/ui/components';
 const { View, TouchableOpacity } = General;
 const { FormText, FormIcon } = Forms;
 
-const JumpButton: any = ({ icon, buttonColor, textColor, text, onPress }) => (
+const JumpButton: any = ({ icon, buttonColor, borderColor, textColor, text, onPress }) => (
   <TouchableOpacity
     style={{
       backgroundColor: buttonColor,
-      borderRadius: 5,
-      padding: 10,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor,
+      padding: 12,
       marginBottom: 15,
       marginTop: 5,
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
+      shadowColor: '#000',
+      shadowOpacity: 0.14,
+      shadowRadius: 14,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 2,
     }}
     onPress={onPress}>
     {icon}
@@ -32,7 +39,7 @@ const JumpButton: any = ({ icon, buttonColor, textColor, text, onPress }) => (
   </TouchableOpacity>
 );
 
-const JumpModal: any = ({ onJumpToBottom, onJumpToTop, onClose, textColor, buttonColor, texts }) => (
+const JumpModal: any = ({ onJumpToBottom, onJumpToTop, onClose, textColor, buttonColor, borderColor, texts }) => (
   <>
     <View
       style={{
@@ -41,7 +48,7 @@ const JumpModal: any = ({ onJumpToBottom, onJumpToTop, onClose, textColor, butto
         alignItems: 'center',
         marginBottom: 15,
       }}>
-      <FormText style={{ fontSize: 20, fontFamily: constants.Fonts.PRIMARY_BOLD }}>{texts.JUMP}</FormText>
+      <FormText style={{ color: textColor, fontSize: 20, fontFamily: constants.Fonts.PRIMARY_BOLD }}>{texts.JUMP}</FormText>
       <TouchableOpacity onPress={onClose}>
         <FormIcon source={getAssetIDByName('ic_close_16px')} style={{ opacity: 1 }} />
       </TouchableOpacity>
@@ -50,13 +57,13 @@ const JumpModal: any = ({ onJumpToBottom, onJumpToTop, onClose, textColor, butto
       icon={<FormIcon source={getAssetIDByName('ic_jump_to_bottom_24px')} style={{ opacity: 1 }} />}
       text={texts.JUMP_BOTTOM}
       onPress={onJumpToBottom}
-      {...{ buttonColor, textColor }}
+      {...{ buttonColor, borderColor, textColor }}
     />
     <JumpButton
       icon={<FormIcon source={getAssetIDByName('ic_jump_to_bottom_24px')} style={{ opacity: 1, transform: [{ scaleY: -1 }] }} />}
       text={texts.JUMP_TOP}
       onPress={onJumpToTop}
-      {...{ buttonColor, textColor }}
+      {...{ buttonColor, borderColor, textColor }}
     />
   </>
 );

@@ -49,33 +49,43 @@ export const FCButton: any = ({ onPress, info, colors, active, content }: FCButt
       }}
       style={{
         backgroundColor: active ? colors.background.active : colors.background.inactive,
-        padding: 4,
-        borderRadius: 5,
-        borderWidth: 2,
+        padding: 7,
+        borderRadius: 999,
+        borderWidth: 1,
         borderColor: active ? colors.border.active : colors.border.inactive,
+        shadowColor: '#000',
+        shadowOpacity: active ? 0.22 : 0.12,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: active ? 4 : 1,
       }}>
       {content}
     </TouchableOpacity>
   );
 };
 
-export const FCButtonBar: any = ({ children }) => {
+export const FCButtonBar: any = ({ children, colors }) => {
   return (
     <View
       style={{
         padding: 15,
         paddingBottom: 0,
-        display: 'flex',
-        flexDirection: 'row',
-        flexWrap: 'nowrap',
-        justifyContent: 'space-between',
       }}>
-      {/* nested view because it was planned to have buttons both in the left and the right side, might still be used at some point */}
       <View
         style={{
-          display: 'flex',
           flexDirection: 'row',
           gap: 8,
+          alignSelf: 'flex-start',
+          padding: 5,
+          borderRadius: 999,
+          borderWidth: 1,
+          borderColor: colors?.hairline ?? 'rgba(255,255,255,0.24)',
+          backgroundColor: colors?.shell ?? 'rgba(255,255,255,0.12)',
+          shadowColor: '#000',
+          shadowOpacity: 0.16,
+          shadowRadius: 16,
+          shadowOffset: { width: 0, height: 7 },
+          elevation: 3,
         }}>
         {children}
       </View>

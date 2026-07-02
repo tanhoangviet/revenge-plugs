@@ -1,22 +1,17 @@
 import { React, ReactNative, constants } from '@vendetta/metro/common';
-import { storage } from '@vendetta/plugin';
-import { find, findByProps, findByName, findByStoreName } from '@vendetta/metro';
+import { findByProps, findByName } from '@vendetta/metro';
 import { General } from '@vendetta/ui/components';
 import { getAssetIDByName } from '@vendetta/ui/assets';
 import { showToast } from '@vendetta/ui/toasts';
 import { DownloadButton, FCButton, FCButtonBar, MonospaceSvg, WordWrapSvg } from './FCButtons';
 import JumpModal from './JumpModal';
 import { FCTitle } from './FCTitle';
-import { semanticColors } from '@vendetta/ui';
 import LoadMore from './LoadMore';
 import getMessages from '../translations';
+import { ensureSettings, getBooleanSetting, getChunkSize } from '../settings';
+import { BubbleField, GlassPanel, getGlassColors } from './glass';
 
 const intl = findByProps('intl').intl;
-const ThemeStore = findByStoreName('ThemeStore');
-const resolveSemanticColor =
-  find((m) => m.default?.internal?.resolveSemanticColor)?.default.internal.resolveSemanticColor ??
-  find((m) => m.meta?.resolveSemanticColor)?.meta.resolveSemanticColor ??
-  (() => {});
 
 // https://github.com/nexpid/VendettaPlugins/blob/main/stuff/types.tsx#L43-L47
 const Navigator = findByName('Navigator') ?? findByProps('Navigator')?.Navigator;
@@ -28,7 +23,6 @@ const { View, Text, TouchableOpacity } = General;
 
 const SafeArea = findByProps('useSafeAreaInsets');
 const humanize = findByProps('intword');
-const DEFAULT_CHUNK_SIZE = 60 * 1024;
 
 const fallbackFilesize = (bytes: number): string => {
   if (!Number.isFinite(bytes) || bytes <= 0) return '0 bytes';
@@ -52,23 +46,32 @@ const MODALS = {
 };
 
 const Loading: any = ({ colors, text }) => (
-  <View style={{ margin: 15, gap: 10 }}>
-    <View style={{ height: 16, width: '72%', borderRadius: 4, backgroundColor: colors.bgBright }} />
-    <View style={{ height: 16, width: '92%', borderRadius: 4, backgroundColor: colors.bgDark }} />
-    <View style={{ height: 16, width: '48%', borderRadius: 4, backgroundColor: colors.bgDark }} />
-    <Text style={{ color: colors.sub, marginTop: 6 }}>{text}</Text>
-  </View>
+  <GlassPanel colors={colors} style={{ margin: 15 }} innerStyle={{ gap: 10 }}>
+    <View style={{ height: 16, width: '72%', borderRadius: 999, backgroundColor: colors.coreStrong }} />
+    <View style={{ height: 16, width: '92%', borderRadius: 999, backgroundColor: colors.core }} />
+    <View style={{ height: 16, width: '48%', borderRadius: 999, backgroundColor: colors.core }} />
+    <Text style={{ color: colors.muted, marginTop: 6 }}>{text}</Text>
+  </GlassPanel>
 );
 
 const StateMessage: any = ({ colors, title, actionText, onAction }) => (
-  <View style={{ margin: 15, padding: 14, borderRadius: 6, backgroundColor: colors.bgDark }}>
-    <Text style={{ color: colors.header, lineHeight: 20 }}>{title}</Text>
+  <GlassPanel colors={colors} style={{ margin: 15 }} innerStyle={{ padding: 16 }}>
+    <Text style={{ color: colors.text, lineHeight: 20 }}>{title}</Text>
     {onAction && (
-      <TouchableOpacity onPress={onAction} style={{ marginTop: 12, padding: 10, borderRadius: 5, backgroundColor: colors.bgBright }}>
-        <Text style={{ color: colors.header, textAlign: 'center', fontFamily: constants.Fonts.PRIMARY_BOLD }}>{actionText}</Text>
+      <TouchableOpacity
+        onPress={onAction}
+        style={{
+          marginTop: 12,
+          padding: 11,
+          borderRadius: 999,
+          borderWidth: 1,
+          borderColor: colors.accent,
+          backgroundColor: colors.accentSoft,
+        }}>
+        <Text style={{ color: colors.text, textAlign: 'center', fontFamily: constants.Fonts.PRIMARY_BOLD }}>{actionText}</Text>
       </TouchableOpacity>
     )}
-  </View>
+  </GlassPanel>
 );
 
 type LoadState = {
@@ -83,24 +86,26 @@ export const FCModal: any = ({
   url = '',
   bytes = 1,
 }) => {
+  ensureSettings();
   const [translations] = React.useState(() => getMessages(intl.currentLocale));
-  const color = (semantic, fallback) => resolveSemanticColor(ThemeStore.theme, semantic) ?? fallback;
+  const glassColors = getGlassColors();
   const colors = {
-    header: color(semanticColors.MOBILE_TEXT_HEADING_PRIMARY, '#f4f4f5'),
-    sub: color(semanticColors.TEXT_MUTED, '#a1a1aa'),
-    bgDark: color(semanticColors.BACKGROUND_BASE_LOWEST, '#18181b'),
-    bgBright: color(semanticColors.BACKGROUND_BASE_LOWER, '#27272a'),
-    bgBrighter: color(semanticColors.BACKGROUND_ACCENT, '#3f3f46'),
+    ...glassColors,
+    header: glassColors.text,
+    sub: glassColors.muted,
+    bgDark: glassColors.core,
+    bgBright: glassColors.coreStrong,
+    bgBrighter: glassColors.shell,
   };
 
   const buttonColors = {
     background: {
-      active: colors.bgBrighter,
-      inactive: colors.bgDark,
+      active: colors.accentSoft,
+      inactive: colors.core,
     },
     border: {
-      active: colors.bgBright,
-      inactive: colors.bgDark,
+      active: colors.accent,
+      inactive: colors.hairline,
     },
   };
 
@@ -110,8 +115,7 @@ export const FCModal: any = ({
       key: keyof typeof MODALS;
       props: { [key: string]: any };
     } | null>(null);
-    const configuredChunkSize = Number(storage.chunkSize);
-    const maxBytes = Number.isFinite(configuredChunkSize) && configuredChunkSize > 0 ? Math.floor(configuredChunkSize) : DEFAULT_CHUNK_SIZE;
+    const maxBytes = getChunkSize();
     const totalBytes = Math.max(0, Number(bytes) || 0);
     const [state, setState] = React.useState<LoadState>({ content: '', loadedBytes: 0, status: 'loading', error: '' });
     const [isLoadingMore, setIsLoadingMore] = React.useState(false);
@@ -120,9 +124,11 @@ export const FCModal: any = ({
     const requestRef = React.useRef(0);
     const pendingMoreRef = React.useRef(false);
 
-    const [wordWrap, setWordWrap] = React.useState(false);
-    const [monospace, setMonospace] = React.useState(true);
+    const [wordWrap, setWordWrap] = React.useState(() => getBooleanSetting('defaultWordWrap'));
+    const [monospace, setMonospace] = React.useState(() => getBooleanSetting('defaultMonospace'));
     const [nl, setnl] = React.useState<boolean[]>([]);
+    const showLineNumbers = getBooleanSetting('showLineNumbers');
+    const bubblesEnabled = getBooleanSetting('bubbleEffects') && getBooleanSetting('liquidGlass');
 
     const getRange = (startByte: number) => {
       if (totalBytes <= 0) return null;
@@ -238,8 +244,9 @@ export const FCModal: any = ({
     if (state.status === 'empty') return <StateMessage colors={colors} title={translations.EMPTY_FILE} />;
 
     return (
-      <View style={{ marginTop: 0 }}>
-        <FCButtonBar>
+      <View style={{ flex: 1, marginTop: 0, backgroundColor: colors.screen }}>
+        <BubbleField colors={colors} enabled={bubblesEnabled} />
+        <FCButtonBar colors={colors}>
           <FCButton
             onPress={() => setWordWrap((v) => !v)}
             active={wordWrap}
@@ -263,7 +270,8 @@ export const FCModal: any = ({
                   onJumpToBottom,
                   onClose: () => setVisibleModal(null),
                   textColor: colors.sub,
-                  buttonColor: colors.bgBright,
+                  buttonColor: colors.core,
+                  borderColor: colors.hairline,
                   texts: {
                     JUMP: translations.JUMP,
                     JUMP_BOTTOM: translations.JUMP_BOTTOM,
@@ -281,6 +289,7 @@ export const FCModal: any = ({
                 style={{
                   height: 24,
                   width: 24,
+                  tintColor: colors.sub,
                   transform: [{ scaleX: -1 }, { rotate: '90deg' }],
                 }}
               />
@@ -288,37 +297,48 @@ export const FCModal: any = ({
           />
         </FCButtonBar>
         <ScrollView ref={scrollViewRef} style={{ margin: 15, marginBottom: 50 + insets.bottom }}>
-          <ScrollView horizontal={!wordWrap}>
-            <View style={{ flexDirection: 'row' }}>
-              <View
-                style={{
-                  borderTopLeftRadius: 4,
-                  borderBottomLeftRadius: 4,
-                  backgroundColor: colors.bgDark,
-                  marginRight: 5,
-                  paddingRight: 2,
-                  paddingLeft: 2,
-                  alignSelf: 'flex-start',
-                }}>
-                <Text style={{ textAlign: 'right', color: colors.sub, lineHeight: 20 }}>{nl.map((line) => (line ? ++lineIteration : ' ')).join('\n')}</Text>
+          <GlassPanel colors={colors} innerStyle={{ padding: 10 }}>
+            <ScrollView horizontal={!wordWrap}>
+              <View style={{ flexDirection: 'row' }}>
+                {showLineNumbers && (
+                  <View
+                    style={{
+                      borderRadius: 18,
+                      backgroundColor: colors.shell,
+                      borderWidth: 1,
+                      borderColor: colors.hairline,
+                      marginRight: 8,
+                      paddingVertical: 5,
+                      paddingRight: 7,
+                      paddingLeft: 7,
+                      alignSelf: 'flex-start',
+                      minWidth: 36,
+                    }}>
+                    <Text style={{ textAlign: 'right', color: colors.muted, lineHeight: 20 }}>
+                      {nl.map((line) => (line ? ++lineIteration : ' ')).join('\n')}
+                    </Text>
+                  </View>
+                )}
+                <Text
+                  selectable={true}
+                  style={[{ color: colors.text, lineHeight: 20, flex: 1 }, monospace && { fontFamily: constants.Fonts.CODE_NORMAL }]}
+                  onTextLayout={(e) => {
+                    if (!showLineNumbers) return;
+                    let lines = e.nativeEvent.lines;
+                    const nextLines = lines.map((_line, i) => (i > 0 ? lines[i - 1].text.indexOf('\n') > -1 : true));
+                    setnl((current) => (current.length === nextLines.length && current.every((line, i) => line === nextLines[i]) ? current : nextLines));
+                  }}>
+                  {state.content}
+                </Text>
               </View>
-              <Text
-                selectable={true}
-                style={[{ color: colors.header, lineHeight: 20, flex: 1 }, monospace && { fontFamily: constants.Fonts.CODE_NORMAL }]}
-                onTextLayout={(e) => {
-                  let lines = e.nativeEvent.lines;
-                  const nextLines = lines.map((_line, i) => (i > 0 ? lines[i - 1].text.indexOf('\n') > -1 : true));
-                  setnl((current) => (current.length === nextLines.length && current.every((line, i) => line === nextLines[i]) ? current : nextLines));
-                }}>
-                {state.content}
-              </Text>
-            </View>
-          </ScrollView>
+            </ScrollView>
+          </GlassPanel>
           {state.loadedBytes < totalBytes && (
             <LoadMore
-              buttonColor={colors.bgBright}
-              buttonTextColor={colors.header}
-              textColor={colors.sub}
+              buttonColor={colors.core}
+              buttonTextColor={colors.text}
+              textColor={colors.muted}
+              borderColor={colors.hairline}
               remainingText={`+ ${filesize(totalBytes - state.loadedBytes)} ${translations.NOT_LOADED}.`}
               moreText={isLoadingMore ? translations.LOADING : translations.LOAD_MORE}
               disabled={isLoadingMore}
@@ -332,17 +352,12 @@ export const FCModal: any = ({
               flex: 1,
               justifyContent: 'center',
               alignItems: 'center',
-              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              backgroundColor: colors.isDark ? 'rgba(5, 8, 16, 0.58)' : 'rgba(225, 235, 255, 0.48)',
             }}>
-            <View
-              style={{
-                backgroundColor: colors.bgBrighter,
-                padding: 20,
-                borderRadius: 10,
-                width: '90%',
-              }}>
+            <BubbleField colors={colors} enabled={bubblesEnabled} />
+            <GlassPanel colors={colors} style={{ width: '90%' }} innerStyle={{ padding: 20 }}>
               {visibleModal != null && <ModalComponent {...visibleModal.props} />}
-            </View>
+            </GlassPanel>
           </View>
         </Modal>
       </View>
