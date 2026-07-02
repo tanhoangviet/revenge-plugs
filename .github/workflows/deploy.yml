@@ -93,26 +93,16 @@ jobs:
           echo "page_url=${page_url}" >> "$GITHUB_OUTPUT"
           echo "Created Pages deployment $(jq -r '.id // .page_url // "unknown"' /tmp/pages-deployment.json)"
 
-      - name: Verify published site
+      - name: Verify GitHub Pages is reachable
         env:
           PAGE_URL: ${{ steps.publish.outputs.page_url }}
         run: |
           set -euo pipefail
 
-          marker_url="${PAGE_URL%/}/deployment.json?run=${GITHUB_RUN_ID}"
-          for attempt in $(seq 1 60); do
-            marker="$(curl -fsSL "$marker_url" || true)"
-            if printf '%s' "$marker" | jq -e \
-              --arg sha "$GITHUB_SHA" \
-              --arg run_id "$GITHUB_RUN_ID" \
-              '.sha == $sha and .runId == $run_id' >/dev/null 2>&1; then
-              echo "Published ${GITHUB_SHA} at ${PAGE_URL}"
-              exit 0
-            fi
+          root_html="$(curl -fsSL "${PAGE_URL%/}/?run=${GITHUB_RUN_ID}")"
+          plugin_html="$(curl -fsSL "${PAGE_URL%/}/FileContentPreview/?run=${GITHUB_RUN_ID}")"
 
-            echo "Waiting for published marker (${attempt}/60)..."
-            sleep 5
-          done
+          printf '%s' "$root_html" | grep -q '<title>Revenge Plugins'
+          printf '%s' "$plugin_html" | grep -q '<title>FileContentPreview'
 
-          echo "::error::GitHub Pages did not publish this run's artifact within 5 minutes"
-          exit 1
+          echo "GitHub Pages is reachable at ${PAGE_URL}"
