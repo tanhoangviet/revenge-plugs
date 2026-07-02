@@ -2,7 +2,7 @@
 
 This repo contains my plugins for [Revenge](https://github.com/revenge-mod).
 
-Plugin index: https://fres621.github.io/revenge-plugs
+Plugin index: https://tanhoangviet.github.io/revenge-plugs
 
 ## Development
 

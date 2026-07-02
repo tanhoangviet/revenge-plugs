@@ -2,7 +2,7 @@
 <html lang="en">
 <title>Revenge Plugins</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<link rel="stylesheet" href="https://fres621.github.io/revenge-plugs/common.css">
+<link rel="stylesheet" href="{baseurl}/common.css">
 <header class="site-header site-header--center">Revenge Plugins</header>
 <main class="shell">
     <section class="intro">
@@ -11,7 +11,7 @@
     </section>
     <section class="plugin-list" aria-label="Plugins">
         <for-each-plugin>
-            <button class="card plugin-card" type="button" onclick="copyPluginUrl('https://fres621.github.io/revenge-plugs/{pluginid}')">
+            <button class="card plugin-card" type="button" onclick="copyPluginUrl('{baseurl}/{pluginid}')">
                 <span>{pluginname}</span>
                 <small>{plugindescription}</small>
             </button>

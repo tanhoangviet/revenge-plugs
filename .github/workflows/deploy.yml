@@ -5,38 +5,53 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Prepare environment
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '22'
 
-      - run: npm install --global pnpm
+      - name: Install pnpm
+        run: npm install --global pnpm@11.4.0
 
       - name: Install deps
-        run: pnpm m i
+        run: pnpm install --frozen-lockfile
 
-      - name: Build plugin(s)
-        run: node ./build.mjs
+      - name: Verify and build
+        run: pnpm verify
 
-      - name: Build GitHub Pages
-        run: node ./pages.mjs
-
-        # Documentation: https://github.com/peaceiris/actions-gh-pages
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v5
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
-          # Makes it so the md files in the previous step get processed by GitHub Pages
-          enable_jekyll: false
-          # This creates the CNAME file required to host GitHub Pages on a custom domain
-          # cname: example.com
+          path: ./dist
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v6
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
