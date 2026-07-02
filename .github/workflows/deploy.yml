@@ -82,10 +82,9 @@ jobs:
             exit 1
           fi
 
-          version="${GITHUB_SHA}-${GITHUB_RUN_ID}"
           jq -n \
             --argjson artifact_id "$artifact_id" \
-            --arg pages_build_version "$version" \
+            --arg pages_build_version "$GITHUB_SHA" \
             --arg oidc_token "$oidc_token" \
             '{artifact_id: $artifact_id, pages_build_version: $pages_build_version, oidc_token: $oidc_token}' \
             | gh api -X POST "repos/${GITHUB_REPOSITORY}/pages/deployments" --input - >/tmp/pages-deployment.json
