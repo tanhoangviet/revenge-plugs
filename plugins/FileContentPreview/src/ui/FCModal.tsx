@@ -8,7 +8,7 @@ import JumpModal from './JumpModal';
 import { FCTitle } from './FCTitle';
 import LoadMore from './LoadMore';
 import getMessages from '../translations';
-import { ensureSettings, getBooleanSetting, getChunkSize } from '../settings';
+import { ensureSettings, getBooleanSetting, getChunkSize, getTextZoomHoldMs } from '../settings';
 import { BubbleField, GlassPanel, getGlassColors } from './glass';
 
 const intl = findByProps('intl').intl;
@@ -115,6 +115,7 @@ export const FCModal: any = ({
       key: keyof typeof MODALS;
       props: { [key: string]: any };
     } | null>(null);
+    const [zoomVisible, setZoomVisible] = React.useState(false);
     const maxBytes = getChunkSize();
     const totalBytes = Math.max(0, Number(bytes) || 0);
     const [state, setState] = React.useState<LoadState>({ content: '', loadedBytes: 0, status: 'loading', error: '' });
@@ -129,6 +130,8 @@ export const FCModal: any = ({
     const [nl, setnl] = React.useState<boolean[]>([]);
     const showLineNumbers = getBooleanSetting('showLineNumbers');
     const bubblesEnabled = getBooleanSetting('bubbleEffects') && getBooleanSetting('liquidGlass');
+    const textZoomEnabled = getBooleanSetting('textGlassZoom');
+    const textZoomHoldMs = getTextZoomHoldMs();
 
     const getRange = (startByte: number) => {
       if (totalBytes <= 0) return null;
@@ -321,6 +324,10 @@ export const FCModal: any = ({
                 )}
                 <Text
                   selectable={true}
+                  delayLongPress={textZoomHoldMs}
+                  onLongPress={() => {
+                    if (textZoomEnabled) setZoomVisible(true);
+                  }}
                   style={[{ color: colors.editorText, lineHeight: 20, flex: 1 }, monospace && { fontFamily: constants.Fonts.CODE_NORMAL }]}
                   onTextLayout={(e) => {
                     if (!showLineNumbers) return;
@@ -357,6 +364,52 @@ export const FCModal: any = ({
             <BubbleField colors={colors} enabled={bubblesEnabled} />
             <GlassPanel colors={colors} style={{ width: '90%' }} innerStyle={{ padding: 20 }}>
               {visibleModal != null && <ModalComponent {...visibleModal.props} />}
+            </GlassPanel>
+          </View>
+        </Modal>
+        <Modal transparent={true} animationType="fade" visible={zoomVisible} onRequestClose={() => setZoomVisible(false)}>
+          <View
+            style={{
+              flex: 1,
+              justifyContent: 'center',
+              alignItems: 'center',
+              padding: 18,
+              backgroundColor: colors.isDark ? 'rgba(4, 7, 13, 0.64)' : 'rgba(218, 229, 247, 0.56)',
+            }}>
+            <BubbleField colors={colors} enabled={bubblesEnabled} />
+            <GlassPanel colors={colors} style={{ width: '100%', maxHeight: '78%' }} innerStyle={{ padding: 16, backgroundColor: colors.editor }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <View>
+                  <Text style={{ color: colors.accent, fontSize: 12, fontFamily: constants.Fonts.PRIMARY_BOLD, textTransform: 'uppercase' }}>Glass Zoom</Text>
+                  <Text style={{ color: colors.muted, marginTop: 2, fontSize: 12 }}>{filename}</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setZoomVisible(false)}
+                  style={{
+                    borderRadius: 999,
+                    borderWidth: 1,
+                    borderColor: colors.hairline,
+                    backgroundColor: colors.core,
+                    paddingHorizontal: 14,
+                    paddingVertical: 8,
+                  }}>
+                  <Text style={{ color: colors.text, fontFamily: constants.Fonts.PRIMARY_BOLD }}>Close</Text>
+                </TouchableOpacity>
+              </View>
+              <ScrollView>
+                <Text
+                  selectable={true}
+                  style={[
+                    {
+                      color: colors.editorText,
+                      fontSize: 19,
+                      lineHeight: 29,
+                    },
+                    monospace && { fontFamily: constants.Fonts.CODE_NORMAL },
+                  ]}>
+                  {state.content}
+                </Text>
+              </ScrollView>
             </GlassPanel>
           </View>
         </Modal>

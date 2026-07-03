@@ -3,9 +3,11 @@ import { findByName } from '@vendetta/metro';
 import { Forms, General } from '@vendetta/ui/components';
 import { getAssetIDByName } from '@vendetta/ui/assets';
 import { showToast } from '@vendetta/ui/toasts';
+import { getBooleanSetting } from '../settings';
 
 const { View, TouchableOpacity } = General;
 const { FormIcon } = Forms;
+const { Animated } = ReactNative;
 
 const Svg = findByName('Svg', false).default;
 const Path = findByName('Svg', false).Path;
@@ -41,26 +43,43 @@ interface FCButtonProps {
 }
 
 export const FCButton: any = ({ onPress, info, colors, active, content }: FCButtonProps) => {
+  const liquidZoom = getBooleanSetting('previewButtonLiquidZoom');
+  const scale = React.useRef(new Animated.Value(1)).current;
+  const animateScale = (value: number) => {
+    if (!liquidZoom) return;
+    Animated.spring(scale, {
+      toValue: value,
+      speed: 24,
+      bounciness: 10,
+      useNativeDriver: true,
+    }).start();
+  };
+
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      onLongPress={() => {
-        showToast(info, getAssetIDByName('ic_information_filled_24px'));
-      }}
-      style={{
-        backgroundColor: active ? colors.background.active : colors.background.inactive,
-        padding: 7,
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: active ? colors.border.active : colors.border.inactive,
-        shadowColor: '#000',
-        shadowOpacity: active ? 0.22 : 0.12,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 4 },
-        elevation: active ? 4 : 1,
-      }}>
-      {content}
-    </TouchableOpacity>
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <TouchableOpacity
+        onPress={onPress}
+        onPressIn={() => animateScale(1.08)}
+        onPressOut={() => animateScale(1)}
+        onLongPress={() => {
+          animateScale(1.16);
+          showToast(info, getAssetIDByName('ic_information_filled_24px'));
+        }}
+        style={{
+          backgroundColor: active ? colors.background.active : colors.background.inactive,
+          padding: 7,
+          borderRadius: 999,
+          borderWidth: 1,
+          borderColor: active ? colors.border.active : colors.border.inactive,
+          shadowColor: '#000',
+          shadowOpacity: active ? 0.28 : 0.18,
+          shadowRadius: liquidZoom ? 16 : 10,
+          shadowOffset: { width: 0, height: 5 },
+          elevation: active ? 5 : 2,
+        }}>
+        {content}
+      </TouchableOpacity>
+    </Animated.View>
   );
 };
 

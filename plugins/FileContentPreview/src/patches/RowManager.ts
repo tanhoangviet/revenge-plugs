@@ -4,7 +4,7 @@
 import { findByStoreName, findByName, findByProps } from '@vendetta/metro';
 import { after } from '@vendetta/patcher';
 import { isPreviewableFile } from '../filetypes';
-import { getEditorTheme } from '../settings';
+import { getBooleanSetting, getEditorTheme } from '../settings';
 import { colorToDiscordInt } from '../themes';
 
 const ThemeStore = findByStoreName('ThemeStore');
@@ -29,6 +29,7 @@ function formatBytes(bytes?: number) {
 
 function getCodedLinkColors() {
   const theme = getEditorTheme();
+  const liquidZoom = getBooleanSetting('previewButtonLiquidZoom');
   let colors = getEmbedThemeColors?.(ThemeStore.theme)?.colors || {
     acceptLabelGreenBackgroundColor: -14385083,
     headerColor: -6973533,
@@ -36,10 +37,11 @@ function getCodedLinkColors() {
     backgroundColor: -14276817,
   };
   return {
-    acceptLabelBackgroundColor: colorToDiscordInt(theme.chatButton, 0.96) ?? colors.acceptLabelGreenBackgroundColor,
+    acceptLabelBackgroundColor: colorToDiscordInt(theme.chatButton, liquidZoom ? 0.96 : 0.86) ?? colors.acceptLabelGreenBackgroundColor,
     headerColor: colorToDiscordInt(theme.chatTitle, 1) ?? colors.headerColor,
-    borderColor: colorToDiscordInt(theme.chatBorder, 0.82) ?? colors.borderColor,
-    backgroundColor: colorToDiscordInt(theme.chatCard, 0.78) ?? colors.backgroundColor,
+    borderColor: colorToDiscordInt(liquidZoom ? theme.accent : theme.chatBorder, liquidZoom ? 0.68 : 0.82) ?? colors.borderColor,
+    backgroundColor: colorToDiscordInt(theme.chatCard, liquidZoom ? 0.70 : 0.78) ?? colors.backgroundColor,
+    thumbnailCornerRadius: liquidZoom ? 22 : 15,
   };
 }
 
@@ -48,7 +50,6 @@ function makeRPL(attachment: any) {
   return {
     [PREVIEW_LINK_MARKER]: true,
     ...getCodedLinkColors(),
-    thumbnailCornerRadius: 15,
     headerText: '',
     titleText: 'File - ' + formatBytes(attachment.size),
     structurableSubtitleText: null,

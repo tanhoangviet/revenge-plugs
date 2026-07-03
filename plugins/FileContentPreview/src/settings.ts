@@ -9,13 +9,24 @@ export const DEFAULT_SETTINGS = {
   liquidGlass: true,
   transparentPreview: true,
   bubbleEffects: true,
+  previewButtonLiquidZoom: true,
+  textGlassZoom: true,
+  textGlassZoomHoldMs: 5000,
   defaultWordWrap: false,
   defaultMonospace: true,
   showLineNumbers: true,
 };
 
 export type FileContentPreviewSettings = typeof DEFAULT_SETTINGS;
-export type BooleanSettingKey = 'liquidGlass' | 'transparentPreview' | 'bubbleEffects' | 'defaultWordWrap' | 'defaultMonospace' | 'showLineNumbers';
+export type BooleanSettingKey =
+  | 'liquidGlass'
+  | 'transparentPreview'
+  | 'bubbleEffects'
+  | 'previewButtonLiquidZoom'
+  | 'textGlassZoom'
+  | 'defaultWordWrap'
+  | 'defaultMonospace'
+  | 'showLineNumbers';
 
 const fallbackStorage: Record<string, any> = {};
 
@@ -65,4 +76,10 @@ export function getChunkSize() {
   return Number.isFinite(configuredChunkSize) && configuredChunkSize > 0
     ? Math.floor(configuredChunkSize)
     : DEFAULT_CHUNK_SIZE;
+}
+
+export function getTextZoomHoldMs() {
+  ensureSettings();
+  const holdMs = Number(getStorage().textGlassZoomHoldMs);
+  return Number.isFinite(holdMs) && holdMs >= 1000 ? Math.floor(holdMs) : DEFAULT_SETTINGS.textGlassZoomHoldMs;
 }

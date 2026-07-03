@@ -14,14 +14,51 @@ const chunkPresets = [
   { label: '256 KB', value: 256 * 1024 },
 ];
 
+const holdPresets = [
+  { label: '3s', value: 3000 },
+  { label: '5s', value: 5000 },
+  { label: '7s', value: 7000 },
+];
+
+const tabs = [
+  { label: 'Theme', value: 'theme' },
+  { label: 'Custom UI', value: 'custom' },
+  { label: 'Reader', value: 'reader' },
+];
+
 const settingsCopy = {
   liquidGlass: ['Liquid Glass', 'Layered transparent preview panels with soft refraction.'],
   transparentPreview: ['Transparency', 'Let the file viewer float over a translucent surface.'],
   bubbleEffects: ['Bubble effect', 'Slow liquid bubbles behind Configure and preview surfaces.'],
+  previewButtonLiquidZoom: ['Preview button', 'Press and hold controls use a liquid glass zoom response.'],
+  textGlassZoom: ['Text glass zoom', 'Hold editor text to open a magnified glass reading layer.'],
   defaultWordWrap: ['Word wrap', 'Open files with wrapping enabled by default.'],
   defaultMonospace: ['Monospace', 'Open files with code-style text by default.'],
   showLineNumbers: ['Line numbers', 'Show the compact line rail in previews.'],
 };
+
+const TabBar: any = ({ activeTab, colors, onChange }) => (
+  <View style={[styles.tabs, { backgroundColor: colors.core, borderColor: colors.border }]}>
+    {tabs.map((tab) => {
+      const active = activeTab === tab.value;
+      return (
+        <TouchableOpacity
+          key={tab.value}
+          activeOpacity={0.84}
+          onPress={() => onChange(tab.value)}
+          style={[
+            styles.tab,
+            {
+              backgroundColor: active ? colors.accentSoft : 'transparent',
+              borderColor: active ? colors.accent : 'transparent',
+            },
+          ]}>
+          <Text style={[styles.tabText, { color: active ? colors.text : colors.muted }]}>{tab.label}</Text>
+        </TouchableOpacity>
+      );
+    })}
+  </View>
+);
 
 const ToggleRow: any = ({ settingKey, colors, store, onChange }) => {
   const [title, body] = settingsCopy[settingKey];
@@ -133,9 +170,61 @@ const ChunkSelector: any = ({ colors, store, onChange }) => {
   );
 };
 
+const HoldSelector: any = ({ colors, store, onChange }) => {
+  const current = Number(store.textGlassZoomHoldMs) || 5000;
+
+  return (
+    <View style={styles.chunkWrap}>
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>Glass zoom hold</Text>
+      <Text style={[styles.sectionBody, { color: colors.muted }]}>Delay before editor text expands into the zoom layer.</Text>
+      <View style={styles.presets}>
+        {holdPresets.map((preset) => {
+          const active = current === preset.value;
+          return (
+            <TouchableOpacity
+              key={preset.label}
+              activeOpacity={0.84}
+              onPress={() => onChange('textGlassZoomHoldMs', preset.value)}
+              style={[
+                styles.preset,
+                {
+                  backgroundColor: active ? colors.accentSoft : colors.core,
+                  borderColor: active ? colors.accent : colors.border,
+                },
+              ]}>
+              <Text style={[styles.presetText, { color: active ? colors.text : colors.muted }]}>{preset.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+};
+
+const PreviewPatchSample: any = ({ colors }) => (
+  <View style={[styles.sampleWrap, { backgroundColor: colors.editor, borderColor: colors.border }]}>
+    <View style={{ flex: 1 }}>
+      <Text style={[styles.sampleMeta, { color: colors.muted }]}>FILE - 32 KB</Text>
+      <Text numberOfLines={1} style={[styles.sampleName, { color: colors.text }]}>sample.lua</Text>
+    </View>
+    <View
+      style={[
+        styles.sampleButton,
+        {
+          backgroundColor: colors.accent,
+          borderColor: colors.hairline,
+          shadowColor: colors.shadow,
+        },
+      ]}>
+      <Text style={[styles.sampleButtonText, { color: colors.isDark ? colors.editorSolid : '#ffffff' }]}>Preview</Text>
+    </View>
+  </View>
+);
+
 export const Settings: any = () => {
   ensureSettings();
   const [, rerender] = React.useReducer((value) => value + 1, 0);
+  const [activeTab, setActiveTab] = React.useState('theme');
   const store = getStorage();
 
   const colors = getGlassColors();
@@ -155,19 +244,39 @@ export const Settings: any = () => {
       <GlassPanel colors={colors} style={styles.headerShell} innerStyle={styles.headerCore}>
         <Text style={[styles.kicker, { color: colors.accent }]}>Configure</Text>
         <Text style={[styles.title, { color: colors.text }]}>FileContentPreview</Text>
-        <Text style={[styles.subtitle, { color: colors.muted }]}>VS Code-style preview themes with readable transparent surfaces.</Text>
+        <Text style={[styles.subtitle, { color: colors.muted }]}>VS Code-style themes, liquid controls, and reader zoom.</Text>
       </GlassPanel>
 
+      <TabBar activeTab={activeTab} colors={colors} onChange={setActiveTab} />
+
+      {activeTab === 'theme' && (
       <GlassPanel colors={colors} style={styles.panel} innerStyle={{ padding: 16 }}>
         <ThemeSelector colors={colors} store={store} onChange={updateSetting} />
+      </GlassPanel>
+      )}
+
+      {activeTab === 'custom' && (
+        <>
+      <GlassPanel colors={colors} style={styles.panel} innerStyle={{ padding: 16 }}>
+        <PreviewPatchSample colors={colors} />
       </GlassPanel>
 
       <GlassPanel colors={colors} style={styles.panel}>
         <ToggleRow colors={colors} store={store} onChange={updateSetting} settingKey="liquidGlass" />
         <ToggleRow colors={colors} store={store} onChange={updateSetting} settingKey="transparentPreview" />
         <ToggleRow colors={colors} store={store} onChange={updateSetting} settingKey="bubbleEffects" />
+        <ToggleRow colors={colors} store={store} onChange={updateSetting} settingKey="previewButtonLiquidZoom" />
+        <ToggleRow colors={colors} store={store} onChange={updateSetting} settingKey="textGlassZoom" />
       </GlassPanel>
 
+      <GlassPanel colors={colors} style={styles.panel} innerStyle={{ padding: 16 }}>
+        <HoldSelector colors={colors} store={store} onChange={updateSetting} />
+      </GlassPanel>
+        </>
+      )}
+
+      {activeTab === 'reader' && (
+        <>
       <GlassPanel colors={colors} style={styles.panel}>
         <ToggleRow colors={colors} store={store} onChange={updateSetting} settingKey="defaultWordWrap" />
         <ToggleRow colors={colors} store={store} onChange={updateSetting} settingKey="defaultMonospace" />
@@ -177,6 +286,8 @@ export const Settings: any = () => {
       <GlassPanel colors={colors} style={styles.panel} innerStyle={{ padding: 16 }}>
         <ChunkSelector colors={colors} store={store} onChange={updateSetting} />
       </GlassPanel>
+        </>
+      )}
 
       <TouchableOpacity
         activeOpacity={0.84}
@@ -208,6 +319,24 @@ const styles = StyleSheet.create({
   },
   panel: {
     marginTop: 2,
+  },
+  tabs: {
+    borderWidth: 1,
+    borderRadius: 999,
+    padding: 4,
+    flexDirection: 'row',
+    gap: 4,
+  },
+  tab: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  tabText: {
+    fontSize: 13,
+    fontFamily: constants.Fonts.PRIMARY_BOLD,
   },
   kicker: {
     fontSize: 11,
@@ -293,6 +422,39 @@ const styles = StyleSheet.create({
     marginTop: 3,
     fontSize: 12,
     lineHeight: 16,
+  },
+  sampleWrap: {
+    minHeight: 82,
+    borderRadius: 22,
+    borderWidth: 1,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  sampleMeta: {
+    fontSize: 12,
+    fontFamily: constants.Fonts.PRIMARY_BOLD,
+    textTransform: 'uppercase',
+  },
+  sampleName: {
+    marginTop: 12,
+    fontSize: 16,
+    fontFamily: constants.Fonts.CODE_NORMAL,
+  },
+  sampleButton: {
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    shadowOpacity: 0.22,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  sampleButtonText: {
+    fontSize: 16,
+    fontFamily: constants.Fonts.PRIMARY_BOLD,
   },
   sectionTitle: {
     fontSize: 17,
