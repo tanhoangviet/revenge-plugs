@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>FileContentPreview Modded</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+  <meta name="description" content="Allows you to preview the contents of text files in the app." />
+  <link rel="stylesheet" href="https://tanhoangviet.github.io/revenge-plugs/common.css" />
+  <script>document.documentElement.classList.add("js");</script>
+</head>
+<body>
+  <nav class="float-nav compact" aria-label="Plugin navigation">
+    <a class="brand-lockup" href="https://tanhoangviet.github.io/revenge-plugs/index.html" aria-label="Back to plugin gallery">
+      <span class="brand-mark">R</span>
+      <span>Back to gallery</span>
+    </a>
+    <div class="nav-links">
+      <a href="#preview">Preview</a>
+      <a href="#features">Features</a>
+      <a href="#install">Install</a>
+    </div>
+  </nav>
+
+  <main>
+    <section class="detail-hero">
+      <div class="detail-copy reveal">
+        <p class="hero-label">Plugin preview</p>
+        <h1>FileContentPreview Modded</h1>
+        <p class="hero-subtitle">Allows you to preview the contents of text files in the app. Built to feel native inside Discord chat.</p>
+        <a class="pill-button" href="#install">
+          <span>Install</span>
+          <span class="button-chip">URL</span>
+        </a>
+      </div>
+
+      <div class="detail-preview-grid reveal" id="preview" style="--delay: 90ms">
+        <div class="bezel phone-bezel">
+          <div class="bezel-core phone-screen">
+            <div class="phone-header">
+              <span># tsundere-bot</span>
+              <span>Preview</span>
+            </div>
+            <div class="discord-message detail-message">
+              <div class="avatar avatar-a">T</div>
+              <div class="message-body">
+                <div class="message-meta">
+                  <strong>Professor</strong>
+                  <span>Yesterday at 22:17</span>
+                </div>
+                <div class="attachment-card">
+                  <div>
+                    <strong>FILE - 32.27 KB</strong>
+                    <span>r9u0WYPH.lua</span>
+                  </div>
+                  <button type="button" class="discord-preview-button">Preview</button>
+                </div>
+              </div>
+            </div>
+            <div class="reader-mini detail-reader">
+              <div class="reader-toolbar">
+                <span>Preview editor</span>
+                <span>Lua</span>
+              </div>
+              <pre><code><span>local</span> settings = {
+  theme = "VS Code Dark+",
+  glass = true,
+  explain = true
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="bezel image-bezel">
+          <div class="bezel-core image-core">
+            <img src="https://tanhoangviet.github.io/revenge-plugs/FileContentPreview/showcase0.png" width="720" height="720" alt="FileContentPreview Modded Discord preview" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="feature-shell" id="features">
+      <div class="section-copy reveal">
+        <h2>What changes in chat.</h2>
+        <p>The plugin turns raw text attachments into a readable, configurable preview flow.</p>
+      </div>
+
+      <div class="feature-grid">
+        <article class="feature-card large bezel reveal">
+          <div class="bezel-core">
+            <span class="soft-label">Reader</span>
+            <h3>Open code without leaving Discord.</h3>
+            <p>Line numbers, word wrap, monospace mode, chunk loading, and a status bar keep long files readable.</p>
+          </div>
+        </article>
+        <article class="feature-card bezel reveal" style="--delay: 80ms">
+          <div class="bezel-core">
+            <span class="soft-label">Highlight</span>
+            <h3>Syntax colors and file metrics.</h3>
+            <p>Keywords, strings, comments, imports, and blocks are surfaced directly in the preview.</p>
+          </div>
+        </article>
+        <article class="feature-card bezel reveal" style="--delay: 140ms">
+          <div class="bezel-core">
+            <span class="soft-label">Explain</span>
+            <h3>Local code explanation.</h3>
+            <p>The info panel summarizes what the file appears to do without sending code to a server.</p>
+          </div>
+        </article>
+        <article class="feature-card wide bezel reveal" style="--delay: 200ms">
+          <div class="bezel-core">
+            <span class="soft-label">Configure</span>
+            <h3>Theme, glass, motion, and reader defaults.</h3>
+            <p>Choose VS Code-style themes, transparent preview panels, glass zoom timing, chunk size, and default reader behavior.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="install-shell reveal" id="install">
+      <div class="install-copy">
+        <h2>Install URL.</h2>
+        <p>Copy this into Revenge plugin settings. The site is already serving the built plugin bundle.</p>
+      </div>
+      <div class="install-card bezel">
+        <div class="bezel-core">
+          <code>https://tanhoangviet.github.io/revenge-plugs/FileContentPreview</code>
+          <button class="pill-button copy-action" type="button" data-copy="https://tanhoangviet.github.io/revenge-plugs/FileContentPreview">
+            <span>Copy URL</span>
+            <span class="button-chip">URL</span>
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="copy-toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const toast = document.querySelector(".copy-toast");
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    async function copyText(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+
+      const input = document.createElement("textarea");
+      input.value = text;
+      input.setAttribute("readonly", "");
+      input.style.position = "fixed";
+      input.style.opacity = "0";
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand("copy");
+      document.body.removeChild(input);
+    }
+
+    document.querySelectorAll("[data-copy]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const text = button.getAttribute("data-copy");
+        try {
+          await copyText(text);
+          toast.textContent = "Copied install URL.";
+        } catch {
+          toast.textContent = text;
+        }
+        toast.classList.add("is-visible");
+        setTimeout(() => toast.classList.remove("is-visible"), 2200);
+      });
+    });
+
+    if (!reduceMotion && "IntersectionObserver" in window) {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-visible");
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.18 });
+
+      document.querySelectorAll(".reveal").forEach((node) => observer.observe(node));
+    } else {
+      document.querySelectorAll(".reveal").forEach((node) => node.classList.add("is-visible"));
+    }
+  </script>
+</body>
+</html>

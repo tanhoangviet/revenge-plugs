@@ -1,0 +1,15 @@
+{
+  "name": "iOS 26 Discord",
+  "description": "Turns Discord into an iOS 26-inspired liquid glass experience with Dynamic Island controls.",
+  "authors": [
+    {
+      "name": "tanhoangviet",
+      "id": "1064016163392208906"
+    }
+  ],
+  "main": "index.js",
+  "vendetta": {
+    "icon": "ic_information_filled_24px"
+  },
+  "hash": "97ee184a6d4f9ddf5bceea6518a9d6bdc3c48b198dbc16631e379e1b03fd5b37"
+}
