@@ -1,4 +1,4 @@
-import { find, findByDisplayName, findByDisplayNameAll, findByName, findByNameAll } from '@vendetta/metro';
+import { find, findByDisplayName, findByDisplayNameAll, findByName, findByNameAll, findByProps } from '@vendetta/metro';
 import { after } from '@vendetta/patcher';
 import { React, ReactNative } from '@vendetta/metro/common';
 import { getBooleanSetting } from '../settings';
@@ -7,18 +7,34 @@ import { DynamicIsland } from '../ui/DynamicIsland';
 const { View, StyleSheet } = ReactNative;
 const HostView: any = View;
 export const HOST_CANDIDATES = [
+  'Root',
+  'AppRoot',
+  'RootApp',
+  'Main',
+  'MainTabs',
+  'Home',
+  'HomeScreen',
+  'HomeStack',
   'MessagesConnected',
   'MessagesWrapperConnected',
   'MessagesWrapper',
   'Messages',
+  'MessageList',
+  'MessageListConnected',
   'ChannelMessages',
   'ChannelMessagesConnected',
+  'GuildChannelScreen',
   'ChannelScreen',
+  'ChannelRoot',
   'ChatInputWrapper',
   'ChatScreen',
+  'ChatView',
   'Chat',
   'App',
 ];
+
+const HOST_NAME_SET = new Set(HOST_CANDIDATES);
+let runtimeHostName: string | null = null;
 
 type PatchStatus = {
   patched: boolean;
@@ -82,13 +98,32 @@ function getComponentName(type: any) {
   return type?.displayName ?? type?.name ?? type?.type?.displayName ?? type?.type?.name ?? '';
 }
 
+function maybeWrapNamedElement(type: any, result: any) {
+  const name = getComponentName(type);
+  if (!HOST_NAME_SET.has(name)) return undefined;
+  if (runtimeHostName && runtimeHostName !== name) return undefined;
+  runtimeHostName = name;
+  return wrapScreen(result);
+}
+
 function patchCreateElementFallback() {
-  const names = new Set(HOST_CANDIDATES);
   return after('createElement', React, ([type], result) => {
-    const name = getComponentName(type);
-    if (!names.has(name)) return;
-    return wrapScreen(result);
+    return maybeWrapNamedElement(type, result);
   });
+}
+
+function patchJsxRuntimeFallback() {
+  const jsxRuntime = findByProps('jsx', 'jsxs');
+  const unpatches: Array<() => void> = [];
+  if (typeof jsxRuntime?.jsx === 'function') {
+    unpatches.push(after('jsx', jsxRuntime, ([type], result) => maybeWrapNamedElement(type, result)));
+  }
+  if (typeof jsxRuntime?.jsxs === 'function') {
+    unpatches.push(after('jsxs', jsxRuntime, ([type], result) => maybeWrapNamedElement(type, result)));
+  }
+  return () => {
+    for (const unpatch of unpatches.splice(0)) unpatch();
+  };
 }
 
 function uniqueModules(modules: any[]) {
@@ -135,7 +170,7 @@ function getHostCandidates() {
 }
 
 export function getDynamicIslandPatchStatus() {
-  return { ...status };
+  return { ...status, runtimeHostName };
 }
 
 function describeModule(module: any) {
@@ -183,6 +218,7 @@ export default function patchDynamicIslandHost() {
   status.patchCount = 0;
   status.attempts = [];
   status.error = null;
+  runtimeHostName = null;
   const unpatches: Array<() => void> = [];
   const seen = new Set<any>();
 
@@ -208,6 +244,13 @@ export default function patchDynamicIslandHost() {
     status.error = String(error);
   }
 
+  try {
+    unpatches.push(patchJsxRuntimeFallback());
+    recordPatch('jsxRuntime', 'fallback');
+  } catch (error) {
+    status.error = String(error);
+  }
+
   if (status.patchCount > 0) {
     if (getBooleanSetting('diagnostics')) {
       console.log('[iOS26Discord] Patched Dynamic Island hosts', status.hostName, status.hostKind);
@@ -215,6 +258,7 @@ export default function patchDynamicIslandHost() {
     return () => {
       status.patched = false;
       status.patchCount = 0;
+      runtimeHostName = null;
       for (const unpatch of unpatches.splice(0)) unpatch();
     };
   }

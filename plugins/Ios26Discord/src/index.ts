@@ -2,6 +2,7 @@ import Settings from './ui/Settings';
 import { ensureSettings, getStorage } from './settings';
 import patchGlassCards from './patches/GlassCards';
 import patchDynamicIslandHost, { getDynamicIslandPatchStatus, probeDynamicIslandHosts } from './patches/DynamicIslandHost';
+import { probeActionModules } from './actions';
 
 let patches: Array<() => void> = [];
 let removeDebugApi: (() => void) | null = null;
@@ -11,6 +12,7 @@ function installDebugApi() {
   const api = {
     status: getDynamicIslandPatchStatus,
     probeHosts: probeDynamicIslandHosts,
+    probeActions: probeActionModules,
     settings: () => ({ ...getStorage() }),
   };
   root.__ios26Discord = api;
