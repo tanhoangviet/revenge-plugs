@@ -26,7 +26,7 @@
       <div class="detail-copy reveal">
         <p class="hero-label">Plugin preview</p>
         <h1>{pluginname}</h1>
-        <p class="hero-subtitle">{plugindescription} Built to feel native inside Discord chat.</p>
+        <p class="hero-subtitle">{plugindetailsubtitle}</p>
         <a class="pill-button" href="#install">
           <span>Install</span>
           <span class="button-chip">URL</span>
@@ -58,21 +58,17 @@
             </div>
             <div class="reader-mini detail-reader">
               <div class="reader-toolbar">
-                <span>Preview editor</span>
-                <span>Lua</span>
+                <span>{previewtitle}</span>
+                <span>{previewbadge}</span>
               </div>
-              <pre><code><span>local</span> settings = {
-  theme = "VS Code Dark+",
-  glass = true,
-  explain = true
-}</code></pre>
+              <pre><code>{previewcode}</code></pre>
             </div>
           </div>
         </div>
 
         <div class="bezel image-bezel">
           <div class="bezel-core image-core">
-            <img src="{baseurl}/{pluginid}/showcase0.png" width="720" height="720" alt="{pluginname} Discord attachment preview" />
+            {pluginshowcase}
           </div>
         </div>
       </div>
@@ -81,36 +77,36 @@
     <section class="feature-shell" id="features">
       <div class="section-copy reveal">
         <h2>What changes in chat.</h2>
-        <p>The plugin turns raw text attachments into a readable, configurable preview flow.</p>
+        <p>{featureintro}</p>
       </div>
 
       <div class="feature-grid">
         <article class="feature-card large bezel reveal">
           <div class="bezel-core">
-            <span class="soft-label">Reader</span>
-            <h3>Open code without leaving Discord.</h3>
-            <p>Line numbers, word wrap, monospace mode, chunk loading, and a status bar keep long files readable.</p>
+            <span class="soft-label">{feature1label}</span>
+            <h3>{feature1title}</h3>
+            <p>{feature1body}</p>
           </div>
         </article>
         <article class="feature-card bezel reveal" style="--delay: 80ms">
           <div class="bezel-core">
-            <span class="soft-label">Highlight</span>
-            <h3>Syntax colors and file metrics.</h3>
-            <p>Keywords, strings, comments, imports, and blocks are surfaced directly in the preview.</p>
+            <span class="soft-label">{feature2label}</span>
+            <h3>{feature2title}</h3>
+            <p>{feature2body}</p>
           </div>
         </article>
         <article class="feature-card bezel reveal" style="--delay: 140ms">
           <div class="bezel-core">
-            <span class="soft-label">Explain</span>
-            <h3>Local code explanation.</h3>
-            <p>The info panel summarizes what the file appears to do without sending code to a server.</p>
+            <span class="soft-label">{feature3label}</span>
+            <h3>{feature3title}</h3>
+            <p>{feature3body}</p>
           </div>
         </article>
         <article class="feature-card wide bezel reveal" style="--delay: 200ms">
           <div class="bezel-core">
-            <span class="soft-label">Configure</span>
-            <h3>Theme, glass, motion, and reader defaults.</h3>
-            <p>Choose VS Code-style themes, transparent preview panels, glass zoom timing, chunk size, and default reader behavior.</p>
+            <span class="soft-label">{feature4label}</span>
+            <h3>{feature4title}</h3>
+            <p>{feature4body}</p>
           </div>
         </article>
       </div>

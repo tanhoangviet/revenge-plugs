@@ -688,6 +688,61 @@ pre span {
   object-fit: cover;
 }
 
+.showcase-fallback {
+  min-height: min(620px, 78vw);
+  padding: 26px;
+  display: grid;
+  align-content: center;
+  gap: 22px;
+  background:
+    linear-gradient(145deg, rgba(142, 161, 255, 0.18), rgba(35, 165, 89, 0.08)),
+    #171b24;
+}
+
+.fallback-island {
+  width: min(250px, 74%);
+  min-height: 56px;
+  margin: 0 auto 12px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(231, 236, 255, 0.16);
+  border-radius: 999px;
+  color: #f3f6ff;
+  background: rgba(9, 12, 20, 0.86);
+  font-weight: 800;
+  box-shadow: 0 18px 54px rgba(3, 7, 18, 0.38);
+}
+
+.fallback-card {
+  border: 1px solid rgba(231, 236, 255, 0.13);
+  border-radius: 26px;
+  padding: 22px;
+  background: rgba(255, 255, 255, 0.075);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.13);
+}
+
+.fallback-card strong,
+.fallback-card span {
+  display: block;
+}
+
+.fallback-card strong {
+  color: var(--text);
+  font-size: 1.18rem;
+}
+
+.fallback-card span {
+  margin-top: 8px;
+  color: var(--muted-strong);
+}
+
+.fallback-bar {
+  width: 66%;
+  height: 14px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(142, 161, 255, 0.86), rgba(255, 255, 255, 0.18));
+}
+
 .feature-grid {
   display: grid;
   grid-template-columns: 1.15fr 0.85fr;
