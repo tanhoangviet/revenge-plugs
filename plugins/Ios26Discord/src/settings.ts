@@ -7,6 +7,7 @@ export const DEFAULT_SETTINGS = {
   bubbleField: true,
   compactIsland: false,
   reduceNoise: false,
+  diagnostics: false,
   accent: 'iosBlue',
   intensity: 'balanced',
 };
@@ -18,7 +19,8 @@ export type BooleanSettingKey =
   | 'liquidMotion'
   | 'bubbleField'
   | 'compactIsland'
-  | 'reduceNoise';
+  | 'reduceNoise'
+  | 'diagnostics';
 
 export type AccentKey = 'iosBlue' | 'aqua' | 'mint' | 'pink' | 'graphite';
 export type IntensityKey = 'soft' | 'balanced' | 'peak';

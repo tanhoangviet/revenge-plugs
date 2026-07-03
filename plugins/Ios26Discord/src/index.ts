@@ -1,11 +1,28 @@
 import Settings from './ui/Settings';
-import { ensureSettings } from './settings';
+import { ensureSettings, getStorage } from './settings';
 import patchGlassCards from './patches/GlassCards';
-import patchDynamicIslandHost from './patches/DynamicIslandHost';
+import patchDynamicIslandHost, { getDynamicIslandPatchStatus, probeDynamicIslandHosts } from './patches/DynamicIslandHost';
 
 let patches: Array<() => void> = [];
+let removeDebugApi: (() => void) | null = null;
+
+function installDebugApi() {
+  const root = globalThis as any;
+  const api = {
+    status: getDynamicIslandPatchStatus,
+    probeHosts: probeDynamicIslandHosts,
+    settings: () => ({ ...getStorage() }),
+  };
+  root.__ios26Discord = api;
+  return () => {
+    if (root.__ios26Discord === api) delete root.__ios26Discord;
+  };
+}
 
 function unpatchAll() {
+  removeDebugApi?.();
+  removeDebugApi = null;
+
   for (const unpatch of patches.splice(0)) {
     try {
       unpatch?.();
@@ -19,6 +36,7 @@ export default {
   onLoad: () => {
     ensureSettings();
     unpatchAll();
+    removeDebugApi = installDebugApi();
     patches.push(patchGlassCards(), patchDynamicIslandHost());
   },
   onUnload: unpatchAll,

@@ -1,4 +1,4 @@
-import { findByName, findByProps } from '@vendetta/metro';
+import { findByName, findByNameAll, findByProps } from '@vendetta/metro';
 import { after } from '@vendetta/patcher';
 import { getBooleanSetting } from '../settings';
 import { colorToDiscordInt, getTheme } from '../theme';
@@ -20,29 +20,43 @@ function getCardColors() {
 function styleLink(link: any) {
   if (!link || typeof link !== 'object' || link[PREVIEW_MARKER]) return link;
   const colors = getCardColors();
-  link[PREVIEW_MARKER] = true;
-  for (const key in colors) {
-    link[key] = colors[key];
+  const target = Object.isFrozen(link) ? { ...link } : link;
+  try {
+    target[PREVIEW_MARKER] = true;
+    for (const key in colors) {
+      target[key] = colors[key];
+    }
+  } catch (error) {
+    console.warn('[iOS26Discord] Failed to style coded link', error);
   }
-  return link;
+  return target;
+}
+
+function getRowManager() {
+  const candidates = [findByName('RowManager'), findByName('RowManager', false), ...findByNameAll('RowManager'), ...findByNameAll('RowManager', false)];
+  return candidates.find((candidate) => candidate?.prototype?.generate);
 }
 
 export default function patchGlassCards() {
-  const RowManager = findByName('RowManager');
-  const CodedLinkExtendedType = findByProps('CodedLinkExtendedType')?.CodedLinkExtendedType;
+  const RowManager = getRowManager();
+  const CodedLinkExtendedType = findByProps('CodedLinkExtendedType')?.CodedLinkExtendedType ?? { EMBEDDED_ACTIVITY_INVITE: 3 };
   if (!RowManager?.prototype?.generate) return () => {};
 
   return after('generate', RowManager.prototype, (_, row) => {
-    if (!getBooleanSetting('glassCards')) return;
-    const message = row?.message;
-    if (!message?.codedLinks?.length) return;
+    try {
+      if (!getBooleanSetting('glassCards')) return;
+      const message = row?.message;
+      if (!message?.codedLinks?.length) return;
 
-    message.codedLinks = message.codedLinks.map((link: any) => {
-      const styled = styleLink(link);
-      if (CodedLinkExtendedType?.EMBEDDED_ACTIVITY_INVITE && styled?.extendedType === CodedLinkExtendedType.EMBEDDED_ACTIVITY_INVITE) {
-        styled.thumbnailCornerRadius = getTheme().radius;
-      }
-      return styled;
-    });
+      message.codedLinks = message.codedLinks.map((link: any) => {
+        const styled = styleLink(link);
+        if (styled?.extendedType === CodedLinkExtendedType.EMBEDDED_ACTIVITY_INVITE) {
+          styled.thumbnailCornerRadius = getTheme().radius;
+        }
+        return styled;
+      });
+    } catch (error) {
+      console.warn('[iOS26Discord] Failed to apply glass card patch', error);
+    }
   });
 }

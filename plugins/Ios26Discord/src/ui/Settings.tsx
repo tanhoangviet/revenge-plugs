@@ -14,6 +14,7 @@ const toggles = {
   bubbleField: ['Bubble field', 'Subtle liquid bubbles inside glass surfaces.'],
   compactIsland: ['Compact island', 'Use a smaller island when collapsed.'],
   reduceNoise: ['Clean mode', 'Reduce decorative alpha for a calmer look.'],
+  diagnostics: ['Diagnostics', 'Expose patch status for Evaluate JavaScript and log host patches.'],
 };
 
 const intensityOptions = [
