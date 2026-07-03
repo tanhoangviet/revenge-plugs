@@ -91,24 +91,99 @@ const MetricChip: any = ({ colors, label, value }) => (
   </View>
 );
 
+const ProgressBar: any = ({ colors, percent }) => (
+  <View
+    style={{
+      height: 7,
+      borderRadius: 999,
+      overflow: 'hidden',
+      backgroundColor: colors.core,
+      borderWidth: 1,
+      borderColor: colors.hairline,
+    }}>
+    <View
+      style={{
+        width: `${Math.max(4, Math.min(100, percent))}%`,
+        height: '100%',
+        borderRadius: 999,
+        backgroundColor: colors.accent,
+      }}
+    />
+  </View>
+);
+
 const InfoStrip: any = ({ colors, insights, filename, loadedBytes, totalBytes }) => (
-  <GlassPanel colors={colors} style={{ marginHorizontal: 15, marginTop: 12 }} innerStyle={{ padding: 12 }}>
-    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+  <GlassPanel colors={colors} style={{ marginHorizontal: 15, marginTop: 12 }} innerStyle={{ padding: 13 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
       <View style={{ flex: 1 }}>
-        <Text style={{ color: colors.text, fontSize: 15, fontFamily: constants.Fonts.PRIMARY_BOLD }} numberOfLines={1}>{filename}</Text>
-        <Text style={{ color: colors.muted, marginTop: 3, fontSize: 12 }} numberOfLines={1}>
-          {insights.language.label} - {insights.metrics.loadedPercent}% loaded
-        </Text>
+        <Text style={{ color: colors.text, fontSize: 16, fontFamily: constants.Fonts.PRIMARY_BOLD }} numberOfLines={1}>{filename}</Text>
+        <Text style={{ color: colors.muted, marginTop: 4, fontSize: 12 }} numberOfLines={1}>{insights.language.label}</Text>
       </View>
-      <Text style={{ color: colors.accent, fontSize: 12, fontFamily: constants.Fonts.PRIMARY_BOLD }}>
-        {filesize(loadedBytes)} / {filesize(totalBytes)}
-      </Text>
+      <View style={{ borderWidth: 1, borderColor: colors.hairline, backgroundColor: colors.accentSoft, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 7 }}>
+        <Text style={{ color: colors.accent, fontSize: 12, fontFamily: constants.Fonts.PRIMARY_BOLD }}>{insights.metrics.loadedPercent}%</Text>
+      </View>
     </View>
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+    <View style={{ marginTop: 12 }}>
+      <ProgressBar colors={colors} percent={insights.metrics.loadedPercent} />
+    </View>
+    <Text style={{ color: colors.muted, marginTop: 8, fontSize: 11 }} numberOfLines={1}>
+      Loaded {filesize(loadedBytes)} of {filesize(totalBytes)}
+    </Text>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 11 }}>
       <MetricChip colors={colors} label="Lines" value={String(insights.metrics.lines)} />
       <MetricChip colors={colors} label="Blocks" value={String(insights.metrics.functions)} />
       <MetricChip colors={colors} label="Imports" value={String(insights.metrics.imports)} />
       <MetricChip colors={colors} label="Signals" value={String(insights.signals.length)} />
+    </View>
+  </GlassPanel>
+);
+
+const EditorChrome: any = ({ colors, filename, insights, children }) => (
+  <GlassPanel colors={colors} innerStyle={{ padding: 0, backgroundColor: colors.editor }}>
+    <View
+      style={{
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.hairline,
+        backgroundColor: colors.lineRail,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 10,
+      }}>
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: colors.editorText, fontSize: 13, fontFamily: constants.Fonts.PRIMARY_BOLD }} numberOfLines={1}>{filename}</Text>
+        <Text style={{ color: colors.editorMuted, marginTop: 2, fontSize: 11 }} numberOfLines={1}>Preview editor</Text>
+      </View>
+      <View style={{ borderWidth: 1, borderColor: colors.hairline, backgroundColor: colors.core, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5 }}>
+        <Text style={{ color: colors.accent, fontSize: 11, fontFamily: constants.Fonts.PRIMARY_BOLD }}>{insights.language.label}</Text>
+      </View>
+    </View>
+    <View style={{ padding: 10 }}>
+      {children}
+    </View>
+    <View
+      style={{
+        borderTopWidth: 1,
+        borderTopColor: colors.hairline,
+        backgroundColor: colors.lineRail,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 8,
+      }}>
+      <Text style={{ color: colors.editorMuted, fontSize: 11 }} numberOfLines={1}>
+        {insights.metrics.lines} lines
+      </Text>
+      <Text style={{ color: colors.editorMuted, fontSize: 11 }} numberOfLines={1}>
+        {insights.metrics.functions} blocks
+      </Text>
+      <Text style={{ color: colors.editorMuted, fontSize: 11 }} numberOfLines={1}>
+        {insights.metrics.loadedPercent}% loaded
+      </Text>
     </View>
   </GlassPanel>
 );
@@ -518,7 +593,7 @@ export const FCModal: any = ({
         )}
         <Animated.View style={entranceStyle}>
         <ScrollView ref={scrollViewRef} style={{ margin: 15, marginBottom: 50 + insets.bottom }}>
-          <GlassPanel colors={colors} innerStyle={{ padding: 10, backgroundColor: colors.editor }}>
+          <EditorChrome colors={colors} filename={filename} insights={insights}>
             <ScrollView horizontal={!wordWrap}>
               <View style={{ flexDirection: 'row' }}>
                 {showLineNumbers && (
@@ -557,7 +632,7 @@ export const FCModal: any = ({
                 </Text>
               </View>
             </ScrollView>
-          </GlassPanel>
+          </EditorChrome>
           {state.loadedBytes < totalBytes && (
             <LoadMore
               buttonColor={colors.core}

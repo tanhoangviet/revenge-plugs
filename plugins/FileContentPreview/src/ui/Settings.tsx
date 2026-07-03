@@ -63,6 +63,28 @@ const TabBar: any = ({ activeTab, colors, onChange }) => (
   </View>
 );
 
+const HeaderPill: any = ({ colors, label, active = true }) => (
+  <View
+    style={{
+      borderWidth: 1,
+      borderColor: active ? colors.accent : colors.hairline,
+      backgroundColor: active ? colors.accentSoft : colors.core,
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 7,
+    }}>
+    <Text style={{ color: active ? colors.text : colors.muted, fontSize: 11, fontFamily: constants.Fonts.PRIMARY_BOLD }}>{label}</Text>
+  </View>
+);
+
+const HeaderSummary: any = ({ colors, store }) => (
+  <View style={styles.headerSummary}>
+    <HeaderPill colors={colors} label={colors.themeLabel} />
+    <HeaderPill colors={colors} label="Highlight" active={store.syntaxHighlight !== false} />
+    <HeaderPill colors={colors} label="Explain" active={store.codeInsights !== false} />
+  </View>
+);
+
 const ToggleRow: any = ({ settingKey, colors, store, onChange }) => {
   const [title, body] = settingsCopy[settingKey];
   const enabled = store[settingKey] !== false;
@@ -129,7 +151,10 @@ const ThemeSelector: any = ({ colors, store, onChange }) => {
                 ))}
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.themeTitle, { color: colors.text }]}>{theme.label}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <Text style={[styles.themeTitle, { color: colors.text }]} numberOfLines={1}>{theme.label}</Text>
+                  {active && <Text style={[styles.selectedText, { color: colors.accent }]}>Selected</Text>}
+                </View>
                 <Text style={[styles.themeBody, { color: colors.muted }]}>{theme.description}</Text>
               </View>
             </TouchableOpacity>
@@ -248,6 +273,7 @@ export const Settings: any = () => {
         <Text style={[styles.kicker, { color: colors.accent }]}>Configure</Text>
         <Text style={[styles.title, { color: colors.text }]}>FileContentPreview</Text>
         <Text style={[styles.subtitle, { color: colors.muted }]}>VS Code-style themes, liquid controls, and reader zoom.</Text>
+        <HeaderSummary colors={colors} store={store} />
       </GlassPanel>
 
       <TabBar activeTab={activeTab} colors={colors} onChange={setActiveTab} />
@@ -344,6 +370,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: constants.Fonts.PRIMARY_BOLD,
   },
+  headerSummary: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 14,
+  },
   kicker: {
     fontSize: 11,
     fontFamily: constants.Fonts.PRIMARY_BOLD,
@@ -421,7 +453,12 @@ const styles = StyleSheet.create({
     height: 21,
   },
   themeTitle: {
+    flex: 1,
     fontSize: 14,
+    fontFamily: constants.Fonts.PRIMARY_BOLD,
+  },
+  selectedText: {
+    fontSize: 11,
     fontFamily: constants.Fonts.PRIMARY_BOLD,
   },
   themeBody: {
