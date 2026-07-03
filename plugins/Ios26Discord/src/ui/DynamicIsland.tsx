@@ -3,13 +3,14 @@ import { showToast } from '@vendetta/ui/toasts';
 import { getAssetIDByName } from '@vendetta/ui/assets';
 import { getBooleanSetting } from '../settings';
 import { BubbleField, GlassPanel, useGlassTheme, useLiquidValue } from './glass';
-import { copyText, openMedia, quickSearchMessages, runQuickCommand, type MediaKind } from '../actions';
+import { quickSearchMessages, quickSearchServers, quickSearchUsers, runQuickCommand } from '../actions';
 
-const { View, Text, TouchableOpacity, TextInput, Dimensions } = ReactNative;
+const { View, Text, TouchableOpacity, TextInput, Dimensions, PanResponder } = ReactNative;
 const { Animated, StyleSheet } = ReactNative;
 
 const toastIcon = () => getAssetIDByName('ic_information_filled_24px');
 const quickCommands = ['/help', '/shrug', '/tableflip', '/me'];
+const gestureThreshold = 44;
 
 function showIslandToast(message: string) {
   showToast(message, toastIcon());
@@ -38,51 +39,38 @@ const CommandChip: any = ({ command, onPress, colors }) => (
   </TouchableOpacity>
 );
 
-const MediaFloat: any = ({ media, colors, width, onOpen, onCopy, onClose }) => (
-  <GlassPanel colors={colors} style={[styles.floatShell, { width }]} innerStyle={styles.floatPanel}>
-    <BubbleField colors={colors} enabled={getBooleanSetting('bubbleField')} />
-    <View style={styles.floatTop}>
-      <View style={[styles.mediaOrb, { backgroundColor: media.kind === 'spotify' ? '#35C98B' : '#FF6A7A' }]} />
-      <View style={{ flex: 1 }}>
-        <Text style={[styles.floatTitle, { color: colors.text }]} numberOfLines={1}>
-          {media.label} float window
-        </Text>
-        <Text style={[styles.floatBody, { color: colors.muted }]} numberOfLines={1}>
-          {media.query || media.url}
-        </Text>
-      </View>
-      <TouchableOpacity activeOpacity={0.82} onPress={onClose} style={styles.floatClose}>
-        <Text style={[styles.floatCloseText, { color: colors.muted }]}>x</Text>
-      </TouchableOpacity>
-    </View>
-    <View style={styles.floatControls}>
-      <TouchableOpacity activeOpacity={0.82} onPress={onOpen} style={[styles.floatButton, { backgroundColor: colors.accentSoft }]}>
-        <Text style={[styles.floatButtonText, { color: colors.text }]}>Open</Text>
-      </TouchableOpacity>
-      <TouchableOpacity activeOpacity={0.82} onPress={onCopy} style={[styles.floatButton, { borderColor: colors.hairline }]}>
-        <Text style={[styles.floatButtonText, { color: colors.muted }]}>Copy</Text>
-      </TouchableOpacity>
-    </View>
-  </GlassPanel>
-);
-
 export const DynamicIsland: any = ({ preview = false }) => {
   const colors = useGlassTheme();
   const [expanded, setExpanded] = React.useState(preview);
   const [query, setQuery] = React.useState('');
-  const [media, setMedia] = React.useState<any>(null);
+  const [gestureHint, setGestureHint] = React.useState<string | null>(null);
   const liquid = useLiquidValue(getBooleanSetting('liquidMotion'));
+  const drag = React.useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const queryRef = React.useRef(query);
+
+  React.useEffect(() => {
+    queryRef.current = query;
+  }, [query]);
 
   if (!preview && !getBooleanSetting('dynamicIsland')) return null;
 
   const pulse = liquid.interpolate({ inputRange: [0, 1], outputRange: [1, colors.islandScale] });
   const compact = getBooleanSetting('compactIsland') && !expanded;
   const screenWidth = Dimensions?.get?.('window')?.width ?? 390;
-  const expandedWidth = Math.min(preview ? 318 : 356, Math.max(286, screenWidth - 28));
-  const width = expanded ? expandedWidth : compact ? 142 : 194;
+  const expandedWidth = Math.min(preview ? 300 : 318, Math.max(260, screenWidth - 72));
+  const width = expanded ? expandedWidth : compact ? 96 : 132;
+
+  const resetDrag = () => {
+    Animated.spring(drag, {
+      toValue: { x: 0, y: 0 },
+      speed: 18,
+      bounciness: 8,
+      useNativeDriver: true,
+    }).start(() => setGestureHint(null));
+  };
 
   const searchMessages = () => {
-    const result = quickSearchMessages(query);
+    const result = quickSearchMessages(queryRef.current);
     if (result.mode === 'empty') {
       showIslandToast('Type a message search first');
     } else if (result.mode === 'clipboard') {
@@ -92,8 +80,30 @@ export const DynamicIsland: any = ({ preview = false }) => {
     }
   };
 
+  const searchUsers = () => {
+    const result = quickSearchUsers(queryRef.current);
+    if (result.mode === 'empty') {
+      showIslandToast('Type a user search first');
+    } else if (result.mode === 'clipboard') {
+      showIslandToast('User search copied');
+    } else {
+      showIslandToast('User search opened');
+    }
+  };
+
+  const searchServers = () => {
+    const result = quickSearchServers(queryRef.current);
+    if (result.mode === 'empty') {
+      showIslandToast('Type a server search first');
+    } else if (result.mode === 'clipboard') {
+      showIslandToast('Server search copied');
+    } else {
+      showIslandToast('Server search opened');
+    }
+  };
+
   const useCommand = (value?: string) => {
-    const command = value ?? query ?? '/help';
+    const command = value ?? queryRef.current ?? '/help';
     const result = runQuickCommand(command);
     if (result.mode === 'empty') {
       showIslandToast('Type a command first');
@@ -104,21 +114,48 @@ export const DynamicIsland: any = ({ preview = false }) => {
     }
   };
 
-  const useMedia = (kind: MediaKind) => {
-    const result = openMedia(kind, query);
-    const label = kind === 'spotify' ? 'Spotify' : 'YouTube';
-    setMedia({
-      kind,
-      label,
-      query: query || label,
-      url: result.url,
-    });
-    showIslandToast(result.ok ? `Opening ${label}` : `${label} link copied`);
+  const runGesture = (hint: string | null) => {
+    if (hint === 'messages') searchMessages();
+    if (hint === 'users') searchUsers();
+    if (hint === 'servers') searchServers();
   };
+
+  const panResponder = React.useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 10 || Math.abs(gesture.dy) > 10,
+      onPanResponderMove: (_, gesture) => {
+        drag.setValue({ x: gesture.dx * 0.42, y: Math.max(-12, Math.min(gesture.dy * 0.42, 34)) });
+        if (gesture.dy > gestureThreshold && Math.abs(gesture.dy) > Math.abs(gesture.dx)) {
+          setGestureHint('messages');
+        } else if (gesture.dx > gestureThreshold) {
+          setGestureHint('users');
+        } else if (gesture.dx < -gestureThreshold) {
+          setGestureHint('servers');
+        } else {
+          setGestureHint(null);
+        }
+      },
+      onPanResponderRelease: (_, gesture) => {
+        const next =
+          gesture.dy > gestureThreshold && Math.abs(gesture.dy) > Math.abs(gesture.dx)
+            ? 'messages'
+            : gesture.dx > gestureThreshold
+              ? 'users'
+              : gesture.dx < -gestureThreshold
+                ? 'servers'
+                : null;
+        runGesture(next);
+        resetDrag();
+      },
+      onPanResponderTerminate: resetDrag,
+    }),
+  ).current;
 
   return (
     <View pointerEvents="box-none" style={[styles.layer, preview && styles.previewLayer]}>
-      <Animated.View style={{ transform: [{ scale: pulse }] }}>
+      <Animated.View
+        {...panResponder.panHandlers}
+        style={{ transform: [{ translateX: drag.x }, { translateY: drag.y }, { scale: pulse }] }}>
         <View
           style={[
             styles.island,
@@ -139,14 +176,16 @@ export const DynamicIsland: any = ({ preview = false }) => {
             <View style={[styles.liveOrb, { backgroundColor: colors.accent }]} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.islandTitle, { color: colors.text }]} numberOfLines={1}>
-                {expanded ? 'Dynamic Island' : 'Quick Island'}
+                {expanded ? 'Search Island' : 'Island'}
               </Text>
-              <Text style={[styles.islandSubtitle, { color: colors.islandMuted }]} numberOfLines={1}>
-                {expanded ? 'Search, commands, Spotify, and YouTube.' : 'Tap for actions'}
-              </Text>
+              {expanded && (
+                <Text style={[styles.islandSubtitle, { color: colors.islandMuted }]} numberOfLines={1}>
+                  Pull down, right, or left.
+                </Text>
+              )}
             </View>
             <View style={[styles.statusPill, { backgroundColor: colors.accentSoft, borderColor: colors.hairline }]}>
-              <Text style={[styles.statusText, { color: colors.accent }]}>{expanded ? 'LIVE' : 'GO'}</Text>
+              <Text style={[styles.statusText, { color: colors.accent }]}>{expanded ? 'GO' : '>'}</Text>
             </View>
           </TouchableOpacity>
 
@@ -156,7 +195,7 @@ export const DynamicIsland: any = ({ preview = false }) => {
                 <TextInput
                   value={query}
                   onChangeText={setQuery}
-                  placeholder="Search, /command, Spotify or YouTube"
+                  placeholder="Search, @user, server, or /command"
                   placeholderTextColor={colors.muted}
                   selectionColor={colors.accent}
                   autoCapitalize="none"
@@ -166,10 +205,10 @@ export const DynamicIsland: any = ({ preview = false }) => {
               </View>
 
               <View style={styles.actionGrid}>
-                <ActionButton label="Search" detail="messages" onPress={searchMessages} colors={colors} />
+                <ActionButton label="Messages" detail="pull down" onPress={searchMessages} colors={colors} />
+                <ActionButton label="Users" detail="swipe right" onPress={searchUsers} colors={colors} />
+                <ActionButton label="Servers" detail="swipe left" onPress={searchServers} colors={colors} />
                 <ActionButton label="Command" detail="slash" onPress={() => useCommand()} colors={colors} />
-                <ActionButton label="Spotify" detail="music" onPress={() => useMedia('spotify')} colors={colors} />
-                <ActionButton label="YouTube" detail="video" onPress={() => useMedia('youtube')} colors={colors} />
               </View>
 
               <View style={styles.commandRow}>
@@ -181,18 +220,12 @@ export const DynamicIsland: any = ({ preview = false }) => {
           )}
         </View>
 
-        {expanded && media && (
-          <MediaFloat
-            media={media}
-            colors={colors}
-            width={Math.min(324, width)}
-            onOpen={() => openMedia(media.kind, media.url)}
-            onCopy={() => {
-              copyText(media.url);
-              showIslandToast('Media link copied');
-            }}
-            onClose={() => setMedia(null)}
-          />
+        {gestureHint && (
+          <View style={[styles.gestureRail, { backgroundColor: colors.island, borderColor: colors.hairline }]}>
+            <Text style={[styles.gestureText, { color: colors.accent }]}>
+              {gestureHint === 'users' ? '>> user search' : gestureHint === 'servers' ? '<< server search' : 'v message search'}
+            </Text>
+          </View>
         )}
       </Animated.View>
     </View>
@@ -210,7 +243,7 @@ export const IslandPreviewCard: any = () => {
         <View style={{ flex: 1 }}>
           <Text style={[styles.previewName, { color: colors.text }]}>Discord, but liquid</Text>
           <Text style={[styles.previewBody, { color: colors.muted }]}>
-            Quick actions float above chat with search, slash commands, Spotify, and YouTube controls.
+            Pull down for message search, swipe right for user search, or swipe left for server search.
           </Text>
         </View>
       </View>
@@ -221,7 +254,7 @@ export const IslandPreviewCard: any = () => {
 const styles = StyleSheet.create({
   layer: {
     position: 'absolute',
-    top: 8,
+    top: 30,
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -234,47 +267,47 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   island: {
-    minHeight: 48,
+    minHeight: 38,
     borderRadius: 999,
     borderWidth: 1,
     padding: 6,
     overflow: 'hidden',
-    shadowOpacity: 0.28,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.22,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
   },
   islandExpanded: {
-    borderRadius: 30,
+    borderRadius: 24,
   },
   islandTop: {
-    minHeight: 42,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
+    minHeight: 30,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 9,
+    gap: 7,
   },
   liveOrb: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
   },
   islandTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: constants.Fonts.PRIMARY_BOLD,
   },
   islandSubtitle: {
     marginTop: 2,
-    fontSize: 10,
+    fontSize: 9,
   },
   statusPill: {
     borderWidth: 1,
     borderRadius: 999,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
   },
   statusText: {
-    fontSize: 10,
+    fontSize: 9,
     fontFamily: constants.Fonts.PRIMARY_BOLD,
   },
   controlPanel: {
@@ -329,62 +362,21 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: constants.Fonts.PRIMARY_BOLD,
   },
-  floatShell: {
-    marginTop: 10,
-    width: 324,
+  gestureRail: {
+    marginTop: 6,
     alignSelf: 'center',
-  },
-  floatPanel: {
-    padding: 12,
-  },
-  floatTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  mediaOrb: {
-    width: 11,
-    height: 11,
-    borderRadius: 6,
-  },
-  floatTitle: {
-    fontSize: 13,
-    fontFamily: constants.Fonts.PRIMARY_BOLD,
-  },
-  floatBody: {
-    marginTop: 2,
-    fontSize: 10,
-  },
-  floatClose: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  floatCloseText: {
-    fontSize: 16,
-    fontFamily: constants.Fonts.PRIMARY_BOLD,
-  },
-  floatControls: {
-    marginTop: 10,
-    flexDirection: 'row',
-    gap: 8,
-  },
-  floatButton: {
-    flex: 1,
-    minHeight: 34,
-    borderRadius: 17,
     borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  floatButtonText: {
+  gestureText: {
     fontSize: 12,
     fontFamily: constants.Fonts.PRIMARY_BOLD,
   },
   previewCard: {
-    minHeight: 360,
+    minHeight: 292,
     padding: 16,
   },
   previewMessage: {

@@ -1,4 +1,4 @@
-import { find, findByDisplayName, findByDisplayNameAll, findByName, findByNameAll, findByProps } from '@vendetta/metro';
+import { findByDisplayName, findByDisplayNameAll, findByName, findByNameAll, findByProps } from '@vendetta/metro';
 import { after } from '@vendetta/patcher';
 import { React, ReactNative } from '@vendetta/metro/common';
 import { getBooleanSetting } from '../settings';
@@ -33,7 +33,23 @@ export const HOST_CANDIDATES = [
   'App',
 ];
 
-const HOST_NAME_SET = new Set(HOST_CANDIDATES);
+const RUNTIME_HOST_NAME_SET = new Set([
+  'Root',
+  'AppRoot',
+  'RootApp',
+  'Main',
+  'MainTabs',
+  'Home',
+  'HomeScreen',
+  'HomeStack',
+  'GuildChannelScreen',
+  'ChannelScreen',
+  'ChannelRoot',
+  'ChatScreen',
+  'ChatView',
+  'Chat',
+  'App',
+]);
 let runtimeHostName: string | null = null;
 
 type PatchStatus = {
@@ -79,28 +95,13 @@ function recordPatch(name: string, kind: string) {
   status.patchCount += 1;
 }
 
-function patchModule(module: any, name: string, kind: string) {
-  if (!module) return null;
-  if (module.default && typeof module.default === 'function') {
-    const unpatch = after('default', module, (_, result) => wrapScreen(result));
-    recordPatch(name, `${kind}.default`);
-    return unpatch;
-  }
-  if (module.render && typeof module.render === 'function') {
-    const unpatch = after('render', module, (_, result) => wrapScreen(result));
-    recordPatch(name, `${kind}.render`);
-    return unpatch;
-  }
-  return null;
-}
-
 function getComponentName(type: any) {
   return type?.displayName ?? type?.name ?? type?.type?.displayName ?? type?.type?.name ?? '';
 }
 
 function maybeWrapNamedElement(type: any, result: any) {
   const name = getComponentName(type);
-  if (!HOST_NAME_SET.has(name)) return undefined;
+  if (!RUNTIME_HOST_NAME_SET.has(name)) return undefined;
   if (runtimeHostName && runtimeHostName !== name) return undefined;
   runtimeHostName = name;
   return wrapScreen(result);
@@ -128,45 +129,6 @@ function patchJsxRuntimeFallback() {
 
 function uniqueModules(modules: any[]) {
   return modules.filter((module, index) => module && modules.indexOf(module) === index);
-}
-
-function getHostCandidates() {
-  const modules: Array<{ name: string; kind: string; module: any }> = [];
-
-  for (const name of HOST_CANDIDATES) {
-    try {
-      const byName = uniqueModules([
-        findByName(name, false),
-        findByName(name, true),
-        ...findByNameAll(name, false),
-        ...findByNameAll(name, true),
-      ]);
-      for (const module of byName) modules.push({ name, kind: 'name', module });
-
-      const byDisplayName = uniqueModules([
-        findByDisplayName(name, false),
-        findByDisplayName(name, true),
-        ...findByDisplayNameAll(name, false),
-        ...findByDisplayNameAll(name, true),
-      ]);
-      for (const module of byDisplayName) modules.push({ name, kind: 'displayName', module });
-    } catch (error) {
-      status.attempts.push(`${name}: ${String(error)}`);
-    }
-  }
-
-  try {
-    const heuristic = find((module: any) => {
-      const fn = module?.default ?? module?.render ?? module;
-      const source = typeof fn === 'function' ? Function.prototype.toString.call(fn) : '';
-      return source.includes('HACK_fixModalInteraction') || source.includes('messagesWrapper') || source.includes('MessagesConnected');
-    });
-    if (heuristic) modules.push({ name: 'heuristic.Messages', kind: 'source', module: heuristic });
-  } catch (error) {
-    status.attempts.push(`heuristic: ${String(error)}`);
-  }
-
-  return modules;
 }
 
 export function getDynamicIslandPatchStatus() {
@@ -220,22 +182,6 @@ export default function patchDynamicIslandHost() {
   status.error = null;
   runtimeHostName = null;
   const unpatches: Array<() => void> = [];
-  const seen = new Set<any>();
-
-  for (const candidate of getHostCandidates()) {
-    if (!candidate.module || seen.has(candidate.module)) continue;
-    seen.add(candidate.module);
-    try {
-      status.attempts.push(`${candidate.name}:${candidate.kind}`);
-      const unpatch = patchModule(candidate.module, candidate.name, candidate.kind);
-      if (unpatch) {
-        unpatches.push(unpatch);
-      }
-    } catch (error) {
-      status.error = String(error);
-      console.warn('[iOS26Discord] Failed to patch island host candidate', candidate.name, error);
-    }
-  }
 
   try {
     unpatches.push(patchCreateElementFallback());

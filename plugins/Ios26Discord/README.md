@@ -5,8 +5,9 @@ iOS 26-inspired Discord UI plugin for Revenge.
 Features:
 
 - Dynamic Island overlay with liquid glass styling.
-- Quick Dynamic Island panel for message search, slash commands, Spotify, and YouTube.
-- Floating media controls for Spotify and YouTube links or searches.
+- Smaller Dynamic Island overlay designed for the Discord top bar.
+- Gesture actions: pull down for message search, swipe right for user search, and swipe left for server search.
+- Quick Dynamic Island panel for message search, user search, server search, and slash commands.
 - Glass message attachment and coded link cards.
 - Configurable accent, island size, glass intensity, and motion.
 - Settings preview that mirrors the in-app style.
