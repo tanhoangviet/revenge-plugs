@@ -54,44 +54,9 @@ jobs:
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
 
-      - name: Create GitHub Pages deployment
+      - name: Deploy GitHub Pages
         id: publish
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-
-          artifact_id="$(
-            gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts" \
-              --jq '.artifacts[] | select(.name == "github-pages") | .id' \
-              | head -n 1
-          )"
-          if [ -z "$artifact_id" ]; then
-            echo "::error::Unable to find github-pages artifact for this run"
-            exit 1
-          fi
-
-          oidc_token="$(
-            curl -fsSL \
-              -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://github.com/${GITHUB_REPOSITORY_OWNER}" \
-              | jq -r '.value'
-          )"
-          if [ -z "$oidc_token" ] || [ "$oidc_token" = "null" ]; then
-            echo "::error::Unable to request GitHub OIDC token"
-            exit 1
-          fi
-
-          jq -n \
-            --argjson artifact_id "$artifact_id" \
-            --arg pages_build_version "$GITHUB_SHA" \
-            --arg oidc_token "$oidc_token" \
-            '{artifact_id: $artifact_id, pages_build_version: $pages_build_version, oidc_token: $oidc_token}' \
-            | gh api -X POST "repos/${GITHUB_REPOSITORY}/pages/deployments" --input - >/tmp/pages-deployment.json
-
-          page_url="$(gh api "repos/${GITHUB_REPOSITORY}/pages" --jq '.html_url')"
-          echo "page_url=${page_url}" >> "$GITHUB_OUTPUT"
-          echo "Created Pages deployment $(jq -r '.id // .page_url // "unknown"' /tmp/pages-deployment.json)"
+        uses: actions/deploy-pages@v5
 
       - name: Verify GitHub Pages is reachable
         env:
@@ -101,8 +66,10 @@ jobs:
 
           root_html="$(curl -fsSL "${PAGE_URL%/}/?run=${GITHUB_RUN_ID}")"
           plugin_html="$(curl -fsSL "${PAGE_URL%/}/FileContentPreview/?run=${GITHUB_RUN_ID}")"
+          deployment_json="$(curl -fsSL "${PAGE_URL%/}/deployment.json?run=${GITHUB_RUN_ID}")"
 
           printf '%s' "$root_html" | grep -q '<title>Revenge Plugins'
           printf '%s' "$plugin_html" | grep -q '<title>FileContentPreview'
+          printf '%s' "$deployment_json" | jq -e --arg sha "$GITHUB_SHA" '.sha == $sha' >/dev/null
 
           echo "GitHub Pages is reachable at ${PAGE_URL}"
