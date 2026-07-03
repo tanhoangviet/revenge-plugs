@@ -1,45 +1,200 @@
 <!doctype html>
 <html lang="en">
-<title>Revenge Plugins</title>
-<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<link rel="stylesheet" href="{baseurl}/common.css">
-<header class="site-header site-header--center">Revenge Plugins</header>
-<main class="shell">
-    <section class="intro">
-        <h1>Installable plugins</h1>
-        <p>Copy a plugin URL, then paste it in the Revenge plugins settings.</p>
+<head>
+  <meta charset="utf-8" />
+  <title>Revenge Plugins</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+  <meta name="description" content="Preview Revenge plugins with Discord-style UI before installing." />
+  <link rel="stylesheet" href="{baseurl}/common.css" />
+  <script>document.documentElement.classList.add("js");</script>
+</head>
+<body>
+  <nav class="float-nav" aria-label="Primary navigation">
+    <a class="brand-lockup" href="{baseurl}/index.html" aria-label="Revenge Plugins home">
+      <span class="brand-mark">R</span>
+      <span>Revenge Plugs</span>
+    </a>
+    <div class="nav-links">
+      <a href="#plugins">Plugins</a>
+      <a href="#preview">Preview</a>
+      <a href="#install">Install</a>
+    </div>
+  </nav>
+
+  <main>
+    <section class="hero-shell">
+      <div class="hero-copy reveal">
+        <p class="hero-label">Revenge plugin gallery</p>
+        <h1>Preview plugins before installing.</h1>
+        <p class="hero-subtitle">See the Discord-style card, reader preview, settings, and install URL before you paste anything.</p>
+        <a class="pill-button" href="#plugins">
+          <span>View plugins</span>
+          <span class="button-chip">Go</span>
+        </a>
+      </div>
+
+      <div class="hero-stage reveal" id="preview" style="--delay: 90ms">
+        <div class="bezel">
+          <div class="bezel-core discord-stage">
+            <div class="discord-topbar">
+              <span># plugin-preview</span>
+              <span>FileContentPreview</span>
+            </div>
+            <div class="discord-chat">
+              <div class="discord-message">
+                <div class="avatar avatar-a">F</div>
+                <div class="message-body">
+                  <div class="message-meta">
+                    <strong>FileContentPreview</strong>
+                    <span>Today at 02:42</span>
+                  </div>
+                  <p>Preview this Lua file without leaving chat.</p>
+                  <div class="attachment-card">
+                    <div>
+                      <strong>FILE - 32.27 KB</strong>
+                      <span>r9u0WYPH.lua</span>
+                    </div>
+                    <button type="button" class="discord-preview-button">Preview</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="reader-mini">
+                <div class="reader-toolbar">
+                  <span>Reader</span>
+                  <span>Lua</span>
+                </div>
+                <pre><code><span>local</span> preview = require("file")
+preview.open("r9u0WYPH.lua")
+return preview.theme("glass")</code></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
-    <section class="plugin-list" aria-label="Plugins">
+
+    <section class="gallery-shell" id="plugins" aria-label="Plugin gallery">
+      <div class="section-copy reveal">
+        <h2>Pick a plugin with context.</h2>
+        <p>Each page shows what the chat card looks like, what the reader does, and how to install it.</p>
+      </div>
+
+      <div class="plugin-grid">
         <for-each-plugin>
-            <button class="card plugin-card" type="button" onclick="copyPluginUrl('{baseurl}/{pluginid}')">
-                <span>{pluginname}</span>
-                <small>{plugindescription}</small>
-            </button>
+          <article class="plugin-card bezel reveal">
+            <div class="bezel-core plugin-card-core">
+              <div class="plugin-card-copy">
+                <p class="soft-label">Plugin spotlight</p>
+                <h3>{pluginname}</h3>
+                <p>{plugindescription}</p>
+                <div class="feature-pills" aria-label="Highlights">
+                  <span>Discord card</span>
+                  <span>Syntax highlight</span>
+                  <span>Liquid settings</span>
+                </div>
+              </div>
+
+              <div class="mini-discord-card" aria-label="{pluginname} preview card">
+                <div class="mini-message">
+                  <div class="avatar avatar-b">P</div>
+                  <div>
+                    <strong>Plugin tester</strong>
+                    <p>Sent a code attachment.</p>
+                  </div>
+                </div>
+                <div class="mini-attachment">
+                  <div>
+                    <strong>FILE - 32 KB</strong>
+                    <span>sample.lua</span>
+                  </div>
+                  <span class="preview-chip">Preview</span>
+                </div>
+              </div>
+
+              <div class="plugin-actions">
+                <a class="pill-button secondary" href="{baseurl}/{pluginid}">
+                  <span>Open page</span>
+                  <span class="button-chip">View</span>
+                </a>
+                <button class="pill-button copy-action" type="button" data-copy="{baseurl}/{pluginid}">
+                  <span>Copy URL</span>
+                  <span class="button-chip">URL</span>
+                </button>
+              </div>
+            </div>
+          </article>
         </for-each-plugin>
+      </div>
     </section>
-    <p id="copy-status" class="status" role="status" aria-live="polite"></p>
-    <script>
-        async function copyPluginUrl(text) {
-            const status = document.getElementById("copy-status");
-            try {
-                if (navigator.clipboard && window.isSecureContext) {
-                    await navigator.clipboard.writeText(text);
-                } else {
-                    const input = document.createElement("textarea");
-                    input.value = text;
-                    input.setAttribute("readonly", "");
-                    input.style.position = "fixed";
-                    input.style.opacity = "0";
-                    document.body.appendChild(input);
-                    input.select();
-                    document.execCommand("copy");
-                    document.body.removeChild(input);
-                }
-                status.textContent = "Copied install URL.";
-            } catch {
-                status.textContent = text;
-            }
+
+    <section class="proof-shell reveal" id="install" aria-label="Website features">
+      <div class="proof-item">
+        <strong>Native feel</strong>
+        <span>Preview cards match the Discord attachment rhythm.</span>
+      </div>
+      <div class="proof-item">
+        <strong>Fast install</strong>
+        <span>Copy the plugin URL with one press.</span>
+      </div>
+      <div class="proof-item">
+        <strong>Actual preview</strong>
+        <span>Screenshots and live UI explain what changes.</span>
+      </div>
+    </section>
+  </main>
+
+  <div class="copy-toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const toast = document.querySelector(".copy-toast");
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    async function copyText(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+
+      const input = document.createElement("textarea");
+      input.value = text;
+      input.setAttribute("readonly", "");
+      input.style.position = "fixed";
+      input.style.opacity = "0";
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand("copy");
+      document.body.removeChild(input);
+    }
+
+    document.querySelectorAll("[data-copy]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const text = button.getAttribute("data-copy");
+        try {
+          await copyText(text);
+          toast.textContent = "Copied install URL.";
+        } catch {
+          toast.textContent = text;
         }
-    </script>
-</main>
+        toast.classList.add("is-visible");
+        setTimeout(() => toast.classList.remove("is-visible"), 2200);
+      });
+    });
+
+    if (!reduceMotion && "IntersectionObserver" in window) {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-visible");
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.18 });
+
+      document.querySelectorAll(".reveal").forEach((node) => observer.observe(node));
+    } else {
+      document.querySelectorAll(".reveal").forEach((node) => node.classList.add("is-visible"));
+    }
+  </script>
+</body>
 </html>

@@ -2,12 +2,28 @@ import { readFile, writeFile, readdir, cp, mkdir } from "fs/promises";
 
 const baseUrl = "https://tanhoangviet.github.io/revenge-plugs";
 
+function escapeHtml(value = "") {
+    return String(value).replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "\"": "&quot;",
+        "'": "&#39;",
+    })[char]);
+}
+
 function owo(text, pluginId, manifest) {
+    const pluginName = escapeHtml(manifest.name);
+    const pluginDescription = escapeHtml(manifest.description ?? "");
+    const pluginAuthor = escapeHtml((manifest.authors ?? []).map(author => author.name).join(", ") || "Community");
+
     return text
         .replaceAll("{baseurl}", baseUrl)
-        .replaceAll("{pluginname}", manifest.name)
-        .replaceAll("{pluginid}", pluginId)
-        .replaceAll("{plugindescription}", manifest.description ?? "");
+        .replaceAll("{pluginname}", pluginName)
+        .replaceAll("{pluginid}", escapeHtml(pluginId))
+        .replaceAll("{pluginurl}", `${baseUrl}/${pluginId}`)
+        .replaceAll("{pluginauthor}", pluginAuthor)
+        .replaceAll("{plugindescription}", pluginDescription);
 }
 
 await mkdir('dist', { recursive: true });
@@ -21,6 +37,14 @@ for (let plug of (await readdir("./plugins")).sort()) {
     const manifest = JSON.parse(await readFile(`./plugins/${plug}/manifest.json`));
     plugs.push({ manifest, id: plug });
     await mkdir(`./dist/${plug}`, { recursive: true });
+
+    const pluginFiles = await readdir(`./plugins/${plug}`);
+    for (let file of pluginFiles) {
+        if (/^showcase\d+\.(png|jpe?g|webp|gif)$/i.test(file)) {
+            await cp(`./plugins/${plug}/${file}`, `./dist/${plug}/${file}`);
+        }
+    }
+
     await writeFile(`./dist/${plug}/index.html`, owo(pluginTemplate, plug, manifest));
 }
 
