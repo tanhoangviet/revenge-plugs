@@ -10,6 +10,7 @@ import LoadMore from './LoadMore';
 import getMessages from '../translations';
 import { ensureSettings, getBooleanSetting, getChunkSize, getTextZoomHoldMs } from '../settings';
 import { BubbleField, GlassPanel, getGlassColors } from './glass';
+import { getCodeInsights, tokenizeCode } from '../utils/codeIntelligence';
 
 const intl = findByProps('intl').intl;
 
@@ -17,7 +18,7 @@ const intl = findByProps('intl').intl;
 const Navigator = findByName('Navigator') ?? findByProps('Navigator')?.Navigator;
 const closeButton = findByProps('getRenderCloseButton')?.getRenderCloseButton ?? findByProps('getHeaderCloseButton')?.getHeaderCloseButton;
 
-const { ScrollView, Image, Modal }: { [key: string]: any } = ReactNative;
+const { ScrollView, Image, Modal, Animated }: { [key: string]: any } = ReactNative;
 
 const { View, Text, TouchableOpacity } = General;
 
@@ -40,10 +41,6 @@ const filesize = (bytes: number): string =>
   humanize?.intword?.(bytes, ['bytes', 'KB', 'MB', 'GB', 'TB', 'PB'], 1024, undefined, undefined, undefined, ' ') ?? fallbackFilesize(bytes);
 
 const modals = findByProps('pushModal');
-
-const MODALS = {
-  JUMP: JumpModal,
-};
 
 const Loading: any = ({ colors, text }) => (
   <GlassPanel colors={colors} style={{ margin: 15 }} innerStyle={{ gap: 10 }}>
@@ -73,6 +70,135 @@ const StateMessage: any = ({ colors, title, actionText, onAction }) => (
     )}
   </GlassPanel>
 );
+
+const ToolbarTextIcon: any = ({ label, color }) => (
+  <Text style={{ color, fontFamily: constants.Fonts.PRIMARY_BOLD, fontSize: 15, minWidth: 24, textAlign: 'center' }}>{label}</Text>
+);
+
+const MetricChip: any = ({ colors, label, value }) => (
+  <View
+    style={{
+      borderWidth: 1,
+      borderColor: colors.hairline,
+      backgroundColor: colors.core,
+      borderRadius: 14,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      minWidth: 72,
+    }}>
+    <Text style={{ color: colors.muted, fontSize: 10, fontFamily: constants.Fonts.PRIMARY_BOLD, textTransform: 'uppercase' }}>{label}</Text>
+    <Text style={{ color: colors.text, marginTop: 3, fontSize: 13, fontFamily: constants.Fonts.PRIMARY_BOLD }} numberOfLines={1}>{value}</Text>
+  </View>
+);
+
+const InfoStrip: any = ({ colors, insights, filename, loadedBytes, totalBytes }) => (
+  <GlassPanel colors={colors} style={{ marginHorizontal: 15, marginTop: 12 }} innerStyle={{ padding: 12 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: colors.text, fontSize: 15, fontFamily: constants.Fonts.PRIMARY_BOLD }} numberOfLines={1}>{filename}</Text>
+        <Text style={{ color: colors.muted, marginTop: 3, fontSize: 12 }} numberOfLines={1}>
+          {insights.language.label} - {insights.metrics.loadedPercent}% loaded
+        </Text>
+      </View>
+      <Text style={{ color: colors.accent, fontSize: 12, fontFamily: constants.Fonts.PRIMARY_BOLD }}>
+        {filesize(loadedBytes)} / {filesize(totalBytes)}
+      </Text>
+    </View>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+      <MetricChip colors={colors} label="Lines" value={String(insights.metrics.lines)} />
+      <MetricChip colors={colors} label="Blocks" value={String(insights.metrics.functions)} />
+      <MetricChip colors={colors} label="Imports" value={String(insights.metrics.imports)} />
+      <MetricChip colors={colors} label="Signals" value={String(insights.signals.length)} />
+    </View>
+  </GlassPanel>
+);
+
+const InfoModal: any = ({ colors, insights, filename, sizeText, onClose }) => (
+  <>
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+      <View style={{ flex: 1, paddingRight: 12 }}>
+        <Text style={{ color: colors.text, fontSize: 20, fontFamily: constants.Fonts.PRIMARY_BOLD }}>File Information</Text>
+        <Text style={{ color: colors.muted, marginTop: 4 }}>{filename} - {sizeText}</Text>
+      </View>
+      <TouchableOpacity onPress={onClose} style={{ borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: colors.core, borderWidth: 1, borderColor: colors.hairline }}>
+        <Text style={{ color: colors.text, fontFamily: constants.Fonts.PRIMARY_BOLD }}>Close</Text>
+      </TouchableOpacity>
+    </View>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+      <MetricChip colors={colors} label="Language" value={insights.language.label} />
+      <MetricChip colors={colors} label="Active" value={String(insights.metrics.nonEmptyLines)} />
+      <MetricChip colors={colors} label="Comments" value={String(insights.metrics.commentLines)} />
+      <MetricChip colors={colors} label="Longest" value={`${insights.metrics.longestLine} chars`} />
+    </View>
+    <Text style={{ color: colors.muted, lineHeight: 20 }}>
+      {insights.signals.length ? `Signals: ${insights.signals.join(', ')}` : 'No high-level signals were detected in the loaded chunk.'}
+    </Text>
+  </>
+);
+
+const ExplainModal: any = ({ colors, insights, filename, onClose }) => (
+  <>
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+      <View style={{ flex: 1, paddingRight: 12 }}>
+        <Text style={{ color: colors.text, fontSize: 20, fontFamily: constants.Fonts.PRIMARY_BOLD }}>Code Explain</Text>
+        <Text style={{ color: colors.muted, marginTop: 4 }}>{filename}</Text>
+      </View>
+      <TouchableOpacity onPress={onClose} style={{ borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: colors.core, borderWidth: 1, borderColor: colors.hairline }}>
+        <Text style={{ color: colors.text, fontFamily: constants.Fonts.PRIMARY_BOLD }}>Close</Text>
+      </TouchableOpacity>
+    </View>
+    <ScrollView style={{ maxHeight: 420 }}>
+      {insights.overview.map((line) => (
+        <Text key={line} style={{ color: colors.editorText, lineHeight: 21, marginBottom: 8 }}>{line}</Text>
+      ))}
+      {insights.sections.map((section) => (
+        <View key={section.title} style={{ marginTop: 12 }}>
+          <Text style={{ color: colors.accent, fontFamily: constants.Fonts.PRIMARY_BOLD, marginBottom: 7 }}>{section.title}</Text>
+          {section.items.map((item) => (
+            <Text key={item} style={{ color: colors.muted, lineHeight: 20, marginBottom: 5 }}>- {item}</Text>
+          ))}
+        </View>
+      ))}
+    </ScrollView>
+  </>
+);
+
+function getSyntaxPalette(colors) {
+  return {
+    plain: colors.editorText,
+    keyword: colors.accent,
+    string: colors.isDark ? '#ce9178' : '#0a7f42',
+    number: colors.isDark ? '#b5cea8' : '#0550ae',
+    comment: colors.editorMuted,
+    function: colors.isDark ? '#dcdcaa' : '#795e26',
+    operator: colors.muted,
+  };
+}
+
+const HighlightedCodeText: any = ({ content, tokens, colors }) => {
+  if (!tokens) return <>{content}</>;
+  const palette = getSyntaxPalette(colors);
+  return (
+    <>
+      {tokens.map((line, lineIndex) => (
+        <React.Fragment key={`line-${lineIndex}`}>
+          {line.map((token, tokenIndex) => (
+            <Text key={`${lineIndex}-${tokenIndex}`} style={{ color: palette[token.type] ?? palette.plain }}>
+              {token.text}
+            </Text>
+          ))}
+          {lineIndex < tokens.length - 1 && <Text>{'\n'}</Text>}
+        </React.Fragment>
+      ))}
+    </>
+  );
+};
+
+const MODALS = {
+  JUMP: JumpModal,
+  INFO: InfoModal,
+  EXPLAIN: ExplainModal,
+};
 
 type LoadState = {
   content: string;
@@ -132,6 +258,10 @@ export const FCModal: any = ({
     const bubblesEnabled = getBooleanSetting('bubbleEffects') && getBooleanSetting('liquidGlass');
     const textZoomEnabled = getBooleanSetting('textGlassZoom');
     const textZoomHoldMs = getTextZoomHoldMs();
+    const syntaxHighlightEnabled = getBooleanSetting('syntaxHighlight');
+    const codeInsightsEnabled = getBooleanSetting('codeInsights');
+    const animatedReader = getBooleanSetting('animatedReader');
+    const entrance = React.useRef(new Animated.Value(1)).current;
 
     const getRange = (startByte: number) => {
       if (totalBytes <= 0) return null;
@@ -240,6 +370,49 @@ export const FCModal: any = ({
         });
     }
 
+    const insights = React.useMemo(
+      () => getCodeInsights(state.content, filename, totalBytes, state.loadedBytes),
+      [state.content, state.loadedBytes, totalBytes],
+    );
+    const highlightedTokens = React.useMemo(
+      () => (syntaxHighlightEnabled ? tokenizeCode(state.content, insights.language.key) : null),
+      [state.content, insights.language.key, syntaxHighlightEnabled],
+    );
+
+    React.useEffect(() => {
+      if (!animatedReader || state.status !== 'ready') {
+        entrance.setValue(1);
+        return;
+      }
+
+      entrance.setValue(0);
+      Animated.timing(entrance, {
+        toValue: 1,
+        duration: 360,
+        useNativeDriver: true,
+      }).start();
+    }, [animatedReader, entrance, state.loadedBytes, state.status]);
+
+    const entranceStyle = animatedReader
+      ? {
+          opacity: entrance,
+          transform: [
+            {
+              translateY: entrance.interpolate({
+                inputRange: [0, 1],
+                outputRange: [18, 0],
+              }),
+            },
+            {
+              scale: entrance.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.985, 1],
+              }),
+            },
+          ],
+        }
+      : null;
+
     let lineIteration = 0;
 
     if (state.status === 'loading') return <Loading colors={colors} text={translations.LOADING} />;
@@ -298,7 +471,52 @@ export const FCModal: any = ({
               />
             }
           />
+          {codeInsightsEnabled && (
+            <FCButton
+              onPress={() =>
+                setVisibleModal({
+                  key: 'INFO',
+                  props: {
+                    colors,
+                    insights,
+                    filename,
+                    sizeText: filesize(bytes),
+                    onClose: () => setVisibleModal(null),
+                  },
+                })
+              }
+              active={false}
+              colors={buttonColors}
+              info="File information"
+              content={<ToolbarTextIcon label="i" color={colors.sub} />}
+            />
+          )}
+          {codeInsightsEnabled && (
+            <FCButton
+              onPress={() =>
+                setVisibleModal({
+                  key: 'EXPLAIN',
+                  props: {
+                    colors,
+                    insights,
+                    filename,
+                    onClose: () => setVisibleModal(null),
+                  },
+                })
+              }
+              active={false}
+              colors={buttonColors}
+              info="Code explain"
+              content={<ToolbarTextIcon label="{}" color={colors.sub} />}
+            />
+          )}
         </FCButtonBar>
+        {codeInsightsEnabled && (
+          <Animated.View style={entranceStyle}>
+            <InfoStrip colors={colors} insights={insights} filename={filename} loadedBytes={state.loadedBytes} totalBytes={totalBytes} />
+          </Animated.View>
+        )}
+        <Animated.View style={entranceStyle}>
         <ScrollView ref={scrollViewRef} style={{ margin: 15, marginBottom: 50 + insets.bottom }}>
           <GlassPanel colors={colors} innerStyle={{ padding: 10, backgroundColor: colors.editor }}>
             <ScrollView horizontal={!wordWrap}>
@@ -335,7 +553,7 @@ export const FCModal: any = ({
                     const nextLines = lines.map((_line, i) => (i > 0 ? lines[i - 1].text.indexOf('\n') > -1 : true));
                     setnl((current) => (current.length === nextLines.length && current.every((line, i) => line === nextLines[i]) ? current : nextLines));
                   }}>
-                  {state.content}
+                  <HighlightedCodeText content={state.content} tokens={highlightedTokens} colors={colors} />
                 </Text>
               </View>
             </ScrollView>
@@ -353,6 +571,7 @@ export const FCModal: any = ({
             />
           )}
         </ScrollView>
+        </Animated.View>
         <Modal transparent={true} animationType="none" visible={visibleModal != null} onRequestClose={() => setVisibleModal(null)}>
           <View
             style={{
@@ -407,7 +626,7 @@ export const FCModal: any = ({
                     },
                     monospace && { fontFamily: constants.Fonts.CODE_NORMAL },
                   ]}>
-                  {state.content}
+                  <HighlightedCodeText content={state.content} tokens={highlightedTokens} colors={colors} />
                 </Text>
               </ScrollView>
             </GlassPanel>

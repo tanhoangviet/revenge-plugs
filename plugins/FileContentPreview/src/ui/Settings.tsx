@@ -32,6 +32,9 @@ const settingsCopy = {
   bubbleEffects: ['Bubble effect', 'Slow liquid bubbles behind Configure and preview surfaces.'],
   previewButtonLiquidZoom: ['Preview button', 'Press and hold controls use a liquid glass zoom response.'],
   textGlassZoom: ['Text glass zoom', 'Hold editor text to open a magnified glass reading layer.'],
+  animatedReader: ['Reader animation', 'Animate panels and controls when a file opens.'],
+  syntaxHighlight: ['Syntax highlight', 'Color keywords, strings, comments, numbers, and functions.'],
+  codeInsights: ['Code insights', 'Show file metrics, signals, and local code explanation.'],
   defaultWordWrap: ['Word wrap', 'Open files with wrapping enabled by default.'],
   defaultMonospace: ['Monospace', 'Open files with code-style text by default.'],
   showLineNumbers: ['Line numbers', 'Show the compact line rail in previews.'],
@@ -267,6 +270,7 @@ export const Settings: any = () => {
         <ToggleRow colors={colors} store={store} onChange={updateSetting} settingKey="bubbleEffects" />
         <ToggleRow colors={colors} store={store} onChange={updateSetting} settingKey="previewButtonLiquidZoom" />
         <ToggleRow colors={colors} store={store} onChange={updateSetting} settingKey="textGlassZoom" />
+        <ToggleRow colors={colors} store={store} onChange={updateSetting} settingKey="animatedReader" />
       </GlassPanel>
 
       <GlassPanel colors={colors} style={styles.panel} innerStyle={{ padding: 16 }}>
@@ -278,6 +282,8 @@ export const Settings: any = () => {
       {activeTab === 'reader' && (
         <>
       <GlassPanel colors={colors} style={styles.panel}>
+        <ToggleRow colors={colors} store={store} onChange={updateSetting} settingKey="syntaxHighlight" />
+        <ToggleRow colors={colors} store={store} onChange={updateSetting} settingKey="codeInsights" />
         <ToggleRow colors={colors} store={store} onChange={updateSetting} settingKey="defaultWordWrap" />
         <ToggleRow colors={colors} store={store} onChange={updateSetting} settingKey="defaultMonospace" />
         <ToggleRow colors={colors} store={store} onChange={updateSetting} settingKey="showLineNumbers" />

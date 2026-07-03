@@ -12,6 +12,9 @@ export const DEFAULT_SETTINGS = {
   previewButtonLiquidZoom: true,
   textGlassZoom: true,
   textGlassZoomHoldMs: 5000,
+  syntaxHighlight: true,
+  codeInsights: true,
+  animatedReader: true,
   defaultWordWrap: false,
   defaultMonospace: true,
   showLineNumbers: true,
@@ -24,6 +27,9 @@ export type BooleanSettingKey =
   | 'bubbleEffects'
   | 'previewButtonLiquidZoom'
   | 'textGlassZoom'
+  | 'syntaxHighlight'
+  | 'codeInsights'
+  | 'animatedReader'
   | 'defaultWordWrap'
   | 'defaultMonospace'
   | 'showLineNumbers';
